@@ -11,8 +11,13 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  CircularProgress,
+  SelectChangeEvent,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
@@ -25,26 +30,126 @@ const Register: React.FC = () => {
     studentId: '',
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleChange = (e: any) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    setError('');
+  };
+
+  const handleSelectChange = (e: SelectChangeEvent<string>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
       [name]: value,
-    });
+      // 如果從學生改為教師，清除學號
+      ...(name === 'role' && value !== 'student' ? { studentId: '' } : {})
+    }));
+    setError('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    
+    // 基本驗證
+    if (!formData.username || !formData.email || !formData.password || !formData.role) {
+      setError('請填寫所有必填欄位');
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('密碼與確認密碼不符');
       return;
     }
+
+    if (formData.password.length < 6) {
+      setError('密碼長度至少需要6個字元');
+      return;
+    }
+
+    if (formData.role === 'student' && !formData.studentId) {
+      setError('學生必須填寫學號');
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      // TODO: 實現註冊邏輯
-      console.log('註冊資料:', formData);
-    } catch (err) {
-      setError('註冊失敗，請稍後再試');
+      // 郵箱格式驗證
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        setError('請輸入有效的電子郵件地址');
+        return;
+      }
+
+      // 密碼強度驗證
+      if (!/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/.test(formData.password)) {
+        setError('密碼必須至少包含6個字符，包括字母和數字');
+        return;
+      }
+
+      // 創建 Firebase Auth 用戶
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      );
+
+      // 更新用戶顯示名稱
+      await updateProfile(userCredential.user, {
+        displayName: formData.username
+      });
+
+      // 在 Firestore 中創建用戶檔案
+      const userData = {
+        uid: userCredential.user.uid,
+        username: formData.username,
+        email: formData.email,
+        role: formData.role,
+        studentId: formData.role === 'student' ? formData.studentId : null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      await setDoc(doc(db, 'users', userCredential.user.uid), userData);
+
+      // 註冊成功，導航到登入頁面
+      navigate('/login');
+    } catch (err: any) {
+      console.error('註冊錯誤:', err);
+      console.log('Firebase error code:', err.code); // 添加錯誤碼日誌
+      switch (err.code) {
+        case 'auth/email-already-in-use':
+          setError('此電子郵件已被註冊');
+          break;
+        case 'auth/invalid-email':
+          setError('無效的電子郵件格式');
+          break;
+        case 'auth/operation-not-allowed':
+          setError('電子郵件/密碼註冊功能尚未啟用，請聯繫系統管理員');
+          console.error('需要在 Firebase Console 中啟用 Email/Password 驗證方式');
+          break;
+        case 'auth/weak-password':
+          setError('密碼強度不足');
+          break;
+        case 'auth/network-request-failed':
+          setError('網路連接失敗，請檢查網路連接');
+          break;
+        case 'auth/configuration-not-found':
+          setError('Firebase 配置錯誤，請確認專案設定');
+          console.error('請確認 Firebase 配置是否正確，並且已啟用必要的服務');
+          break;
+        default:
+          console.error('Unexpected error:', err);
+          setError(err.message || '註冊失敗，請稍後再試');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -86,7 +191,8 @@ const Register: React.FC = () => {
               name="username"
               autoFocus
               value={formData.username}
-              onChange={handleChange}
+              onChange={handleInputChange}
+              disabled={loading}
             />
             <TextField
               margin="normal"
@@ -97,9 +203,10 @@ const Register: React.FC = () => {
               name="email"
               type="email"
               value={formData.email}
-              onChange={handleChange}
+              onChange={handleInputChange}
+              disabled={loading}
             />
-            <FormControl fullWidth margin="normal">
+            <FormControl fullWidth margin="normal" required>
               <InputLabel id="role-label">角色</InputLabel>
               <Select
                 labelId="role-label"
@@ -107,7 +214,9 @@ const Register: React.FC = () => {
                 name="role"
                 value={formData.role}
                 label="角色"
-                onChange={handleChange}
+                onChange={handleSelectChange}
+                disabled={loading}
+                error={formData.role === '' && Boolean(error)}
               >
                 <MenuItem value="student">學生</MenuItem>
                 <MenuItem value="teacher">教師</MenuItem>
@@ -122,7 +231,8 @@ const Register: React.FC = () => {
                 label="學號"
                 name="studentId"
                 value={formData.studentId}
-                onChange={handleChange}
+                onChange={handleInputChange}
+                disabled={loading}
               />
             )}
             <TextField
@@ -132,9 +242,9 @@ const Register: React.FC = () => {
               name="password"
               label="密碼"
               type="password"
-              id="password"
               value={formData.password}
-              onChange={handleChange}
+              onChange={handleInputChange}
+              disabled={loading}
             />
             <TextField
               margin="normal"
@@ -143,22 +253,24 @@ const Register: React.FC = () => {
               name="confirmPassword"
               label="確認密碼"
               type="password"
-              id="confirmPassword"
               value={formData.confirmPassword}
-              onChange={handleChange}
+              onChange={handleInputChange}
+              disabled={loading}
             />
             <Button
               type="submit"
               fullWidth
               variant="contained"
               sx={{ mt: 3, mb: 2 }}
+              disabled={loading}
             >
-              註冊
+              {loading ? <CircularProgress size={24} /> : '註冊'}
             </Button>
             <Button
               fullWidth
               variant="text"
               onClick={() => navigate('/login')}
+              disabled={loading}
             >
               已有帳號？前往登入
             </Button>

@@ -8,12 +8,13 @@ import {
   Paper,
   Alert,
 } from '@mui/material';
+import { AuthService } from '../services';
 import { useNavigate } from 'react-router-dom';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    username: '',
+    email: '',
     password: '',
   });
   const [error, setError] = useState('');
@@ -28,10 +29,15 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // TODO: 實現登入邏輯
-      console.log('登入資料:', formData);
-    } catch (err) {
-      setError('登入失敗，請檢查帳號密碼');
+      await AuthService.login(formData);
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Login error:', error);
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('登入失敗，請檢查信箱密碼');
+      }
     }
   };
 
@@ -68,12 +74,13 @@ const Login: React.FC = () => {
               margin="normal"
               required
               fullWidth
-              id="username"
-              label="帳號"
-              name="username"
-              autoComplete="username"
+              id="email"
+              label="電子郵件"
+              name="email"
+              autoComplete="email"
               autoFocus
-              value={formData.username}
+              type="email"
+              value={formData.email}
               onChange={handleChange}
             />
             <TextField

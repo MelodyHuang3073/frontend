@@ -1,27 +1,36 @@
+import { Timestamp } from 'firebase/firestore';
+
+// API Response 類型定義
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
 // 使用者類型定義
 export interface User {
-  id: string;
+  uid: string;
   username: string;
   email: string;
   role: 'student' | 'teacher' | 'admin';
   studentId?: string;
   teacherId?: string;
+  createdAt: Date;
 }
 
 // 請假類型定義
 export interface LeaveApplication {
   id: string;
-  studentId: string;
-  studentName: string;
+  userId: string;
+  userName: string;
   type: string;
-  startDate: Date;
-  endDate: Date;
+  startDate: Timestamp;
+  endDate: Timestamp;
   reason: string;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   attachments: string[];
-  affectedCourses: Course[];
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
 // 課程類型定義
@@ -45,13 +54,4 @@ export interface CourseSchedule {
 export interface AuthState {
   isAuthenticated: boolean;
   user: User | null;
-  token: string | null;
-}
-
-// API 響應類型定義
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
 }

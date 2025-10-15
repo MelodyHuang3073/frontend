@@ -7,23 +7,31 @@ import {
   FormControl,
   InputLabel,
   Select,
+  SelectChangeEvent,
   MenuItem,
   Button,
   Alert,
+  CircularProgress,
 } from '@mui/material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { zhTW } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
+import { auth } from '../firebase/config';
+import { LeaveService } from '../services/leaveService';
+
+interface FormDataType {
+  leaveType: string;
+  startDate: Date | null;
+  endDate: Date | null;
+  reason: string;
+  attachments: File[];
+}
 
 const LeaveApplication: React.FC = () => {
-  const [formData, setFormData] = useState<{
-    leaveType: string;
-    startDate: Date | null;
-    endDate: Date | null;
-    reason: string;
-    attachments: File[];
-  }>({
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState<FormDataType>({
     leaveType: '',
     startDate: null,
     endDate: null,
@@ -31,8 +39,9 @@ const LeaveApplication: React.FC = () => {
     attachments: [],
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -40,10 +49,10 @@ const LeaveApplication: React.FC = () => {
     }));
   };
 
-  const handleSelectChange = (e: any) => {
+  const handleSelectChange = (event: SelectChangeEvent) => {
     setFormData(prev => ({
       ...prev,
-      leaveType: e.target.value
+      leaveType: event.target.value
     }));
   };
 
@@ -77,6 +86,14 @@ const LeaveApplication: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    
+    // 檢查用戶是否已登入
+    if (!auth.currentUser) {
+      setError('請先登入');
+      navigate('/login');
+      return;
+    }
     
     // 基本驗證
     if (!formData.leaveType || !formData.startDate || !formData.endDate || !formData.reason) {
@@ -90,19 +107,41 @@ const LeaveApplication: React.FC = () => {
       return;
     }
 
+    setLoading(true);
+
     try {
-      // TODO: 實現提交請假申請的邏輯
-      console.log('請假申請資料:', formData);
-      // 這裡會加入與後端 API 的整合
-    } catch (err) {
-      setError('提交失敗，請稍後再試');
+      const response = await LeaveService.createLeave({
+        type: formData.leaveType,
+        startDate: formData.startDate!,
+        endDate: formData.endDate!,
+        reason: formData.reason,
+        attachments: formData.attachments
+      });
+
+      if (response.success) {
+        setFormData({
+          leaveType: '',
+          startDate: null,
+          endDate: null,
+          reason: '',
+          attachments: [],
+        });
+        navigate('/leave-list');
+      } else {
+        setError(response.error || '提交失敗，請稍後再試');
+      }
+    } catch (error: any) {
+      console.error('提交請假申請時發生錯誤:', error);
+      setError(error.message || '提交失敗，請稍後再試');
+    } finally {
+      setLoading(false);
     }
   };
 
   const removeAttachment = (index: number) => {
-    setFormData(prev => ({
+    setFormData((prev: FormDataType) => ({
       ...prev,
-      attachments: prev.attachments.filter((_, i) => i !== index)
+      attachments: prev.attachments.filter((_: File, i: number) => i !== index)
     }));
   };
 
@@ -128,6 +167,7 @@ const LeaveApplication: React.FC = () => {
                   value={formData.leaveType}
                   label="請假類型"
                   onChange={handleSelectChange}
+                  disabled={loading}
                 >
                   <MenuItem value="sick">病假</MenuItem>
                   <MenuItem value="personal">事假</MenuItem>
@@ -142,6 +182,7 @@ const LeaveApplication: React.FC = () => {
                     onChange={(newValue) => {
                       setFormData(prev => ({ ...prev, startDate: newValue }));
                     }}
+                    disabled={loading}
                     sx={{ width: '100%' }}
                   />
                 </LocalizationProvider>
@@ -152,6 +193,7 @@ const LeaveApplication: React.FC = () => {
                     onChange={(newValue) => {
                       setFormData(prev => ({ ...prev, endDate: newValue }));
                     }}
+                    disabled={loading}
                     sx={{ width: '100%' }}
                   />
                 </LocalizationProvider>
@@ -165,12 +207,14 @@ const LeaveApplication: React.FC = () => {
                 label="請假原因"
                 value={formData.reason}
                 onChange={handleChange}
+                disabled={loading}
               />
               <Box>
                 <Button
                   variant="contained"
                   component="label"
                   sx={{ mr: 2 }}
+                  disabled={loading}
                 >
                   上傳附件
                   <input
@@ -213,8 +257,9 @@ const LeaveApplication: React.FC = () => {
                 color="primary"
                 size="large"
                 fullWidth
+                disabled={loading}
               >
-                提交申請
+                {loading ? <CircularProgress size={24} color="inherit" /> : '提交申請'}
               </Button>
           </Box>
         </Box>

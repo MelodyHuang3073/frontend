@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -17,40 +17,46 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   Visibility as VisibilityIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material';
-
-// 假資料用於展示
-const sampleData = [
-  {
-    id: '1',
-    type: 'sick',
-    startDate: '2025-10-15T09:00:00',
-    endDate: '2025-10-16T17:00:00',
-    reason: '感冒發燒',
-    status: 'pending',
-    attachments: ['病假證明.pdf'],
-  },
-  {
-    id: '2',
-    type: 'personal',
-    startDate: '2025-10-20T09:00:00',
-    endDate: '2025-10-20T17:00:00',
-    reason: '個人事務',
-    status: 'approved',
-    attachments: [],
-  },
-];
+import { format } from 'date-fns';
+import { zhTW } from 'date-fns/locale';
+import { LeaveService } from '../services/leaveService';
+import { LeaveApplication } from '../types';
 
 const LeaveList: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [selectedLeave, setSelectedLeave] = useState<any>(null);
+  const [selectedLeave, setSelectedLeave] = useState<LeaveApplication | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [leaves, setLeaves] = useState<LeaveApplication[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchLeaves = async () => {
+      try {
+        const response = await LeaveService.getLeaves();
+        if (response.success && response.data) {
+          setLeaves(response.data);
+        } else {
+          setError(response.error || '無法獲取請假記錄');
+        }
+      } catch (err) {
+        setError('獲取請假記錄時發生錯誤');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLeaves();
+  }, []);
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -108,62 +114,97 @@ const LeaveList: React.FC = () => {
       <Typography variant="h5" gutterBottom>
         請假紀錄
       </Typography>
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>假別</TableCell>
-              <TableCell>開始時間</TableCell>
-              <TableCell>結束時間</TableCell>
-              <TableCell>狀態</TableCell>
-              <TableCell>操作</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {sampleData
-              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell>{getLeaveTypeText(row.type)}</TableCell>
-                  <TableCell>
-                    {new Date(row.startDate).toLocaleString('zh-TW')}
-                  </TableCell>
-                  <TableCell>
-                    {new Date(row.endDate).toLocaleString('zh-TW')}
-                  </TableCell>
-                  <TableCell>{getStatusChip(row.status)}</TableCell>
-                  <TableCell>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleViewDetails(row)}
-                    >
-                      <VisibilityIcon />
-                    </IconButton>
-                    {row.status === 'pending' && (
-                      <>
-                        <IconButton size="small" color="primary">
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton size="small" color="error">
-                          <DeleteIcon />
-                        </IconButton>
-                      </>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-          </TableBody>
-        </Table>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={sampleData.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        />
-      </TableContainer>
+      
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {loading ? (
+        <Box display="flex" justifyContent="center" p={3}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>假別</TableCell>
+                <TableCell>開始時間</TableCell>
+                <TableCell>結束時間</TableCell>
+                <TableCell>狀態</TableCell>
+                <TableCell>操作</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {leaves
+                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                .map((leave) => (
+                  <TableRow key={leave.id}>
+                    <TableCell>{getLeaveTypeText(leave.type)}</TableCell>
+                    <TableCell>
+                      {format(leave.startDate.toDate(), 'yyyy/MM/dd HH:mm', { locale: zhTW })}
+                    </TableCell>
+                    <TableCell>
+                      {format(leave.endDate.toDate(), 'yyyy/MM/dd HH:mm', { locale: zhTW })}
+                    </TableCell>
+                    <TableCell>{getStatusChip(leave.status)}</TableCell>
+                    <TableCell>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleViewDetails(leave)}
+                      >
+                        <VisibilityIcon />
+                      </IconButton>
+                      {leave.status === 'pending' && (
+                        <>
+                          <IconButton 
+                            size="small" 
+                            color="primary"
+                            onClick={() => {/* TODO: 實現編輯功能 */}}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                          <IconButton 
+                            size="small" 
+                            color="error"
+                            onClick={async () => {
+                              if (window.confirm('確定要刪除這筆請假記錄嗎？')) {
+                                try {
+                                  const response = await LeaveService.deleteLeave(leave.id);
+                                  if (response.success) {
+                                    setLeaves(leaves.filter(l => l.id !== leave.id));
+                                  } else {
+                                    setError(response.error || '刪除失敗');
+                                  }
+                                } catch (err) {
+                                  setError('刪除時發生錯誤');
+                                }
+                              }
+                            }}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={leaves.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            labelRowsPerPage="每頁顯示筆數："
+          />
+        </TableContainer>
+      )}
 
       {/* 詳情對話框 */}
       <Dialog
@@ -180,22 +221,24 @@ const LeaveList: React.FC = () => {
                 假別：{getLeaveTypeText(selectedLeave.type)}
               </Typography>
               <Typography variant="subtitle2" gutterBottom>
-                開始時間：{new Date(selectedLeave.startDate).toLocaleString('zh-TW')}
+                開始時間：{format(selectedLeave.startDate.toDate(), 'yyyy/MM/dd HH:mm', { locale: zhTW })}
               </Typography>
               <Typography variant="subtitle2" gutterBottom>
-                結束時間：{new Date(selectedLeave.endDate).toLocaleString('zh-TW')}
+                結束時間：{format(selectedLeave.endDate.toDate(), 'yyyy/MM/dd HH:mm', { locale: zhTW })}
               </Typography>
               <Typography variant="subtitle2" gutterBottom>
                 請假原因：{selectedLeave.reason}
               </Typography>
-              {selectedLeave.attachments.length > 0 && (
+              {selectedLeave.attachments?.length > 0 && (
                 <>
                   <Typography variant="subtitle2" gutterBottom>
                     附件：
                   </Typography>
                   {selectedLeave.attachments.map((attachment: string, index: number) => (
                     <Typography key={index} variant="body2">
-                      {attachment}
+                      <a href={attachment} target="_blank" rel="noopener noreferrer">
+                        附件 {index + 1}
+                      </a>
                     </Typography>
                   ))}
                 </>
