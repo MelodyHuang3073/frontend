@@ -16,21 +16,83 @@ export interface User {
   studentId?: string;
   teacherId?: string;
   createdAt: Date;
+  lastLoginAt?: Date;
+  loginCount?: number;
+  updatedAt?: Date;
+  status?: 'active' | 'inactive' | 'suspended';
+  avatarUrl?: string;
+  department?: string;
 }
 
 // 請假類型定義
+export enum LeaveType {
+  SICK = 'sick',
+  PERSONAL = 'personal',
+  OFFICIAL = 'official'
+}
+
+export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+
+// Firestore 中的請假申請資料結構
+export interface LeaveApplicationFirestore {
+  id: string;
+  userId: string;
+  userName: string;
+  type: LeaveType;
+  startDate: Timestamp;
+  endDate: Timestamp;
+  reason: string;
+  status: LeaveStatus;
+  attachments: string[];
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  reviewedBy?: string;
+  reviewedAt?: Timestamp;
+  reviewComment?: string;
+  department?: string;
+  studentId?: string;
+}
+
+// 前端使用的請假申請資料結構
 export interface LeaveApplication {
   id: string;
   userId: string;
   userName: string;
-  type: string;
-  startDate: Timestamp;
-  endDate: Timestamp;
+  type: LeaveType;
+  startDate: Date;
+  endDate: Date;
   reason: string;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  status: LeaveStatus;
   attachments: string[];
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: Date;
+  updatedAt: Date;
+  reviewedBy?: string;
+  reviewedAt?: Date | null;
+  reviewComment?: string;
+  department?: string;
+  studentId?: string;
+  course?: string;
+}
+
+// 前端使用的請假申請資料結構
+export interface LeaveApplication {
+  id: string;
+  userId: string;
+  userName: string;
+  type: LeaveType;
+  startDate: Date;
+  endDate: Date;
+  reason: string;
+  status: LeaveStatus;
+  attachments: string[];
+  createdAt: Date;
+  updatedAt: Date;
+  reviewedBy?: string;
+  reviewedAt?: Date | null;
+  reviewComment?: string;
+  department?: string;
+  studentId?: string;
+  course?: string;
 }
 
 // 課程類型定義

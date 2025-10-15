@@ -41,15 +41,19 @@ const LeaveList: React.FC = () => {
 
   useEffect(() => {
     const fetchLeaves = async () => {
+      setLoading(true);
+      setError(null);
       try {
         const response = await LeaveService.getLeaves();
         if (response.success && response.data) {
           setLeaves(response.data);
+          console.log('取得請假紀錄:', response.data); // debug log
         } else {
           setError(response.error || '無法獲取請假記錄');
         }
       } catch (err) {
-        setError('獲取請假記錄時發生錯誤');
+        console.error('獲取請假記錄錯誤:', err);
+        setError('獲取請假記錄時發生錯誤，請稍後再試');
       } finally {
         setLoading(false);
       }
@@ -144,10 +148,10 @@ const LeaveList: React.FC = () => {
                   <TableRow key={leave.id}>
                     <TableCell>{getLeaveTypeText(leave.type)}</TableCell>
                     <TableCell>
-                      {format(leave.startDate.toDate(), 'yyyy/MM/dd HH:mm', { locale: zhTW })}
+                       {format(leave.startDate, 'yyyy/MM/dd HH:mm', { locale: zhTW })}
                     </TableCell>
                     <TableCell>
-                      {format(leave.endDate.toDate(), 'yyyy/MM/dd HH:mm', { locale: zhTW })}
+                      {format(leave.endDate, 'yyyy/MM/dd HH:mm', { locale: zhTW })}
                     </TableCell>
                     <TableCell>{getStatusChip(leave.status)}</TableCell>
                     <TableCell>
@@ -175,11 +179,9 @@ const LeaveList: React.FC = () => {
                                   const response = await LeaveService.deleteLeave(leave.id);
                                   if (response.success) {
                                     setLeaves(leaves.filter(l => l.id !== leave.id));
-                                  } else {
-                                    setError(response.error || '刪除失敗');
                                   }
                                 } catch (err) {
-                                  setError('刪除時發生錯誤');
+                                  setError('刪除失敗，請稍後再試');
                                 }
                               }
                             }}
@@ -191,6 +193,13 @@ const LeaveList: React.FC = () => {
                     </TableCell>
                   </TableRow>
                 ))}
+              {!loading && leaves.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} align="center">
+                    尚無請假紀錄
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
           <TablePagination
@@ -221,10 +230,10 @@ const LeaveList: React.FC = () => {
                 假別：{getLeaveTypeText(selectedLeave.type)}
               </Typography>
               <Typography variant="subtitle2" gutterBottom>
-                開始時間：{format(selectedLeave.startDate.toDate(), 'yyyy/MM/dd HH:mm', { locale: zhTW })}
+                開始時間：{format(selectedLeave.startDate, 'yyyy/MM/dd HH:mm', { locale: zhTW })}
               </Typography>
               <Typography variant="subtitle2" gutterBottom>
-                結束時間：{format(selectedLeave.endDate.toDate(), 'yyyy/MM/dd HH:mm', { locale: zhTW })}
+                結束時間：{format(selectedLeave.endDate, 'yyyy/MM/dd HH:mm', { locale: zhTW })}
               </Typography>
               <Typography variant="subtitle2" gutterBottom>
                 請假原因：{selectedLeave.reason}

@@ -13,10 +13,10 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, auth } from '../../firebase';
-import { LeaveApplication, ApiResponse } from '../../types';
+import { LeaveApplication, LeaveApplicationFirestore, LeaveType, ApiResponse } from '../../types';
 
 interface CreateLeaveRequest {
-  type: string;
+  type: LeaveType;
   startDate: Date;
   endDate: Date;
   reason: string;
@@ -45,7 +45,8 @@ export const LeaveService = {
         }
       }
 
-      const newLeave: Omit<LeaveApplication, 'id'> = {
+      const newLeave: LeaveApplicationFirestore = {
+        id: '', // Will be set after document creation
         userId: user.uid,
         userName: user.displayName || user.email || 'Unknown',
         type: data.type,
@@ -61,7 +62,21 @@ export const LeaveService = {
       const docRef = await addDoc(collection(db, 'leaves'), newLeave);
       const leaveApplication: LeaveApplication = {
         id: docRef.id,
-        ...newLeave
+        userId: newLeave.userId,
+        userName: newLeave.userName,
+        type: newLeave.type,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        reason: newLeave.reason,
+        status: newLeave.status,
+        attachments: newLeave.attachments,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        reviewedBy: undefined,
+        reviewedAt: null,
+        reviewComment: undefined,
+        department: undefined,
+        studentId: undefined
       };
 
       return {

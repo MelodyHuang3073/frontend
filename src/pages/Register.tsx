@@ -114,9 +114,18 @@ const Register: React.FC = () => {
         studentId: formData.role === 'student' ? formData.studentId : null,
         createdAt: new Date(),
         updatedAt: new Date(),
+        status: 'active',
+        loginCount: 0,
+        lastLoginAt: null
       };
 
-      await setDoc(doc(db, 'users', userCredential.user.uid), userData);
+      try {
+        await setDoc(doc(db, 'users', userCredential.user.uid), userData);
+      } catch (firestoreError) {
+        // 如果 Firestore 寫入失敗，刪除已創建的 Auth 用戶
+        await userCredential.user.delete();
+        throw firestoreError;
+      }
 
       // 註冊成功，導航到登入頁面
       navigate('/login');

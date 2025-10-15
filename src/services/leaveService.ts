@@ -13,10 +13,29 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, auth } from '../firebase';
-import { LeaveApplication, ApiResponse } from '../types';
+import { LeaveApplication, ApiResponse, LeaveType } from '../types';
+
+type FirestoreLeaveData = {
+  userId: string;
+  userName: string;
+  type: LeaveType;
+  startDate: Timestamp;
+  endDate: Timestamp;
+  reason: string;
+  status: string;
+  attachments: string[];
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  reviewedBy?: string;
+  reviewedAt?: Timestamp | null;
+  reviewComment?: string;
+  department?: string;
+  studentId?: string;
+  course?: string;
+};
 
 interface CreateLeaveRequest {
-  type: string;
+  type: LeaveType;
   startDate: Date;
   endDate: Date;
   reason: string;
@@ -30,7 +49,15 @@ export class LeaveService {
       if (!user) {
         return {
           success: false,
-          error: 'User not authenticated'
+          error: '請先登入系統'
+        };
+      }
+
+      // 驗證請假類型
+      if (!['sick', 'personal', 'official'].includes(data.type)) {
+        return {
+          success: false,
+          error: '無效的請假類型'
         };
       }
 
@@ -38,14 +65,50 @@ export class LeaveService {
       const attachmentUrls: string[] = [];
       if (data.attachments) {
         for (const file of data.attachments) {
-          const storageRef = ref(storage, `leaves/${user.uid}/${Date.now()}_${file.name}`);
-          await uploadBytes(storageRef, file);
-          const downloadUrl = await getDownloadURL(storageRef);
-          attachmentUrls.push(downloadUrl);
+          try {
+            // 驗證檔案類型
+            if (!['image/jpeg', 'image/png', 'application/pdf'].includes(file.type)) {
+              throw new Error(`不支援的檔案類型: ${file.type}`);
+            }
+
+            // 驗證檔案大小
+            if (file.size > 10 * 1024 * 1024) {
+              throw new Error(`檔案大小超過限制: ${file.name}`);
+            }
+
+            const fileName = `${Date.now()}_${file.name}`;
+            const storageRef = ref(storage, `leaves/${user.uid}/${fileName}`);
+            
+            console.log('開始上傳檔案:', fileName);
+            console.log('檔案類型:', file.type);
+            console.log('檔案大小:', file.size);
+            
+            const metadata = {
+              contentType: file.type,
+              customMetadata: {
+                'originalName': file.name
+              }
+            };
+            
+            const snapshot = await uploadBytes(storageRef, file, metadata);
+            console.log('檔案上傳成功');
+            const downloadUrl = await getDownloadURL(snapshot.ref);
+            attachmentUrls.push(downloadUrl);
+          } catch (error: any) {
+            console.error('檔案上傳錯誤:', error);
+            if (error.code === 'storage/unauthorized') {
+              throw new Error('沒有權限上傳檔案，請確認您已登入');
+            } else if (error.code === 'storage/canceled') {
+              throw new Error('檔案上傳被取消');
+            } else if (error.code === 'storage/unknown') {
+              throw new Error(`檔案上傳失敗: ${error.message}`);
+            }
+            throw new Error(`檔案 ${file.name} 上傳失敗: ${error.message}`);
+          }
         }
       }
 
-      const newLeave: Omit<LeaveApplication, 'id'> = {
+      const newLeaveData: FirestoreLeaveData = {
         userId: user.uid,
         userName: user.displayName || user.email || 'Unknown',
         type: data.type,
@@ -58,10 +121,27 @@ export class LeaveService {
         updatedAt: Timestamp.now()
       };
 
-      const docRef = await addDoc(collection(db, 'leaves'), newLeave);
+      const docRef = await addDoc(collection(db, 'leaves'), newLeaveData);
+      
+      // 轉換為前端使用的格式
       const leaveApplication: LeaveApplication = {
         id: docRef.id,
-        ...newLeave
+        userId: newLeaveData.userId,
+        userName: newLeaveData.userName,
+        type: newLeaveData.type,
+        startDate: newLeaveData.startDate.toDate(),
+        endDate: newLeaveData.endDate.toDate(),
+        reason: newLeaveData.reason,
+        status: newLeaveData.status as any,
+        attachments: newLeaveData.attachments,
+        createdAt: newLeaveData.createdAt.toDate(),
+        updatedAt: newLeaveData.updatedAt.toDate(),
+        reviewedBy: newLeaveData.reviewedBy,
+        reviewedAt: newLeaveData.reviewedAt ? newLeaveData.reviewedAt.toDate() : null,
+        reviewComment: newLeaveData.reviewComment,
+        department: newLeaveData.department,
+        studentId: newLeaveData.studentId,
+        course: newLeaveData.course
       };
 
       return {
@@ -82,21 +162,50 @@ export class LeaveService {
       if (!user) {
         return {
           success: false,
-          error: 'User not authenticated'
+          error: '請先登入系統'
         };
       }
 
-      const q = query(
-        collection(db, 'leaves'),
-        where('userId', '==', user.uid),
-        orderBy('createdAt', 'desc')
-      );
+      // 獲取當前用戶的角色
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const userData = userDoc.data();
+      
+      if (!userData) {
+        return {
+          success: false,
+          error: '無法獲取用戶資訊'
+        };
+      }
+
+      let q;
+      if (userData.role === 'teacher') {
+        // 教師可以看到所有請假申請
+        q = query(
+          collection(db, 'leaves'),
+          orderBy('createdAt', 'desc')
+        );
+      } else {
+        // 學生只能看到自己的請假申請
+        q = query(
+          collection(db, 'leaves'),
+          where('userId', '==', user.uid),
+          orderBy('createdAt', 'desc')
+        );
+      }
       
       const querySnapshot = await getDocs(q);
-      const leaves = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as LeaveApplication[];
+      const leaves = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          // 確保日期欄位正確轉換
+          startDate: data.startDate.toDate(),
+          endDate: data.endDate.toDate(),
+          createdAt: data.createdAt.toDate(),
+          updatedAt: data.updatedAt.toDate(),
+        };
+      }) as LeaveApplication[];
 
       return {
         success: true,

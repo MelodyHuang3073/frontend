@@ -20,9 +20,10 @@ import { zhTW } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase/config';
 import { LeaveService } from '../services/leaveService';
+import { LeaveType } from '../types';
 
 interface FormDataType {
-  leaveType: string;
+  leaveType: LeaveType;
   startDate: Date | null;
   endDate: Date | null;
   reason: string;
@@ -32,7 +33,7 @@ interface FormDataType {
 const LeaveApplication: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<FormDataType>({
-    leaveType: '',
+    leaveType: LeaveType.PERSONAL,
     startDate: null,
     endDate: null,
     reason: '',
@@ -52,7 +53,7 @@ const LeaveApplication: React.FC = () => {
   const handleSelectChange = (event: SelectChangeEvent) => {
     setFormData(prev => ({
       ...prev,
-      leaveType: event.target.value
+      leaveType: event.target.value as LeaveType
     }));
   };
 
@@ -120,7 +121,7 @@ const LeaveApplication: React.FC = () => {
 
       if (response.success) {
         setFormData({
-          leaveType: '',
+          leaveType: LeaveType.PERSONAL,
           startDate: null,
           endDate: null,
           reason: '',
