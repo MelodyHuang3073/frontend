@@ -39,6 +39,7 @@ const LeaveList: React.FC = () => {
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchLeaves = async () => {
@@ -195,7 +196,10 @@ const LeaveList: React.FC = () => {
                             <IconButton 
                               size="small" 
                               color="primary"
-                              onClick={() => {/* TODO: 實現編輯功能 */}}
+                              onClick={() => {
+                                // navigate to the application page in edit mode
+                                window.location.href = `/leave-application?edit=${leave.id}`;
+                              }}
                             >
                               <EditIcon />
                             </IconButton>
@@ -203,17 +207,23 @@ const LeaveList: React.FC = () => {
                               size="small" 
                               color="error"
                               onClick={async () => {
-                                if (window.confirm('確定要刪除這筆請假記錄嗎？')) {
-                                  try {
-                                    const response = await LeaveService.deleteLeave(leave.id);
-                                    if (response.success) {
-                                      setLeaves(leaves.filter(l => l.id !== leave.id));
-                                    }
-                                  } catch (err) {
-                                    setError('刪除失敗，請稍後再試');
+                                if (!window.confirm('確定要刪除這筆請假記錄嗎？')) return;
+                                try {
+                                  setDeletingId(leave.id);
+                                  const response = await LeaveService.deleteLeave(leave.id);
+                                  if (response.success) {
+                                    // 使用 functional update 避免閉包問題
+                                    setLeaves(prev => prev.filter(l => l.id !== leave.id));
+                                  } else {
+                                    setError(response.error || '刪除失敗，請稍後再試');
                                   }
+                                } catch (err: any) {
+                                  setError(err?.message || '刪除失敗，請稍後再試');
+                                } finally {
+                                  setDeletingId(null);
                                 }
                               }}
+                              disabled={deletingId === leave.id}
                             >
                               <DeleteIcon />
                             </IconButton>

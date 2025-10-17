@@ -40,6 +40,12 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher'
       );
+
+      // 允許刪除：僅允許申請人刪除自己處於 pending 狀態的請假（教師不得刪除學生請假）
+      allow delete: if request.auth != null && (
+        resource.data.userId == request.auth.uid &&
+        resource.data.status == 'pending'
+      );
     }
   }
 }

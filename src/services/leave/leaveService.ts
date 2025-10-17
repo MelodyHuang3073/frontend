@@ -221,6 +221,66 @@ export const LeaveService = {
     }
   },
 
+  updateLeave: async (id: string, data: Partial<CreateLeaveRequest> & { status?: string, reviewComment?: string }): Promise<ApiResponse<LeaveApplication>> => {
+    try {
+      const docRef = doc(db, 'leaves', id);
+      const updatePayload: any = {
+        updatedAt: Timestamp.now()
+      };
+
+      if (data.type) updatePayload.type = data.type;
+      if (data.startDate) updatePayload.startDate = Timestamp.fromDate(data.startDate);
+      if (data.endDate) updatePayload.endDate = Timestamp.fromDate(data.endDate);
+      if (data.reason) updatePayload.reason = data.reason;
+      if (data.status) updatePayload.status = data.status;
+      if (data.reviewComment !== undefined) updatePayload.reviewComment = data.reviewComment;
+
+      await updateDoc(docRef, updatePayload);
+
+      if (data.attachments && data.attachments.length > 0) {
+        const user = auth.currentUser;
+        if (!user) return { success: false, error: 'User not authenticated' };
+        const urls: string[] = [];
+        for (const file of data.attachments) {
+          const storageRef = ref(storage, `leaves/${user.uid}/${Date.now()}_${file.name}`);
+          const snapshot = await uploadBytes(storageRef, file);
+          const downloadUrl = await getDownloadURL(snapshot.ref);
+          urls.push(downloadUrl);
+        }
+        await updateDoc(docRef, { attachments: urls });
+      }
+
+      // return fresh doc
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) return { success: false, error: 'Leave not found after update' };
+      const dataSnap: any = docSnap.data();
+      const toDate = (v: any) => (v && typeof v.toDate === 'function' ? v.toDate() : v);
+      const leave: LeaveApplication = {
+        id: docSnap.id,
+        userId: dataSnap.userId,
+        userName: dataSnap.userName,
+        type: dataSnap.type,
+        startDate: toDate(dataSnap.startDate),
+        endDate: toDate(dataSnap.endDate),
+        reason: dataSnap.reason,
+        status: dataSnap.status,
+        attachments: dataSnap.attachments || [],
+        createdAt: toDate(dataSnap.createdAt),
+        updatedAt: toDate(dataSnap.updatedAt),
+        reviewedBy: dataSnap.reviewedBy,
+        reviewedAt: dataSnap.reviewedAt ? toDate(dataSnap.reviewedAt) : null,
+        reviewComment: dataSnap.reviewComment,
+        department: dataSnap.department,
+        studentId: dataSnap.studentId,
+        course: dataSnap.course
+      };
+
+      return { success: true, data: leave };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
   getPendingLeaves: async (): Promise<ApiResponse<LeaveApplication[]>> => {
     try {
       const q = query(

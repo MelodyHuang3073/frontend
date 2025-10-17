@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase/config';
 import { LeaveService } from '../services/leaveService';
 import { LeaveType } from '../types';
+import { useLocation } from 'react-router-dom';
 
 interface FormDataType {
   leaveType: LeaveType;
@@ -32,7 +33,7 @@ interface FormDataType {
 
 const LeaveApplication: React.FC = () => {
   const navigate = useNavigate();
-  const [role, setRole] = useState<string | null>(null);
+  // role not stored locally; redirect based on userDoc check
   const [formData, setFormData] = useState<FormDataType>({
     leaveType: LeaveType.PERSONAL,
     startDate: null,
@@ -42,6 +43,10 @@ const LeaveApplication: React.FC = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const editId = params.get('edit');
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -112,13 +117,27 @@ const LeaveApplication: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await LeaveService.createLeave({
-        type: formData.leaveType,
-        startDate: formData.startDate!,
-        endDate: formData.endDate!,
-        reason: formData.reason,
-        attachments: formData.attachments
-      });
+      let response;
+      if (isEditMode && editId) {
+        // if editing, use updateLeave; if it was rejected, student can resubmit by setting status to 'pending'
+        response = await LeaveService.updateLeave(editId, {
+          type: formData.leaveType,
+          startDate: formData.startDate!,
+          endDate: formData.endDate!,
+          reason: formData.reason,
+          attachments: formData.attachments,
+          status: 'pending',
+          reviewComment: undefined
+        });
+      } else {
+        response = await LeaveService.createLeave({
+          type: formData.leaveType,
+          startDate: formData.startDate!,
+          endDate: formData.endDate!,
+          reason: formData.reason,
+          attachments: formData.attachments
+        });
+      }
 
       if (response.success) {
         setFormData({
@@ -148,7 +167,6 @@ const LeaveApplication: React.FC = () => {
       try {
         const userDoc = await LeaveService.getUserDoc(user.uid);
         const userRole = userDoc?.role;
-        setRole(userRole || null);
         if (userRole === 'teacher') {
           navigate('/leave-list');
         }
@@ -158,6 +176,36 @@ const LeaveApplication: React.FC = () => {
     };
     checkRole();
   }, [navigate]);
+
+  // if editId exists, load existing leave
+  React.useEffect(() => {
+    const loadEdit = async () => {
+      if (!editId) return;
+      setIsEditMode(true);
+      setLoading(true);
+      try {
+        const res = await LeaveService.getLeaveById(editId);
+        if (res.success && res.data) {
+          const d = res.data;
+          setFormData({
+            leaveType: d.type as LeaveType,
+            startDate: d.startDate,
+            endDate: d.endDate,
+            reason: d.reason,
+            attachments: [] // attachments are URLs; editing attachments would require re-upload - keep empty for now
+          });
+        } else {
+          setError(res.error || '無法載入請假紀錄');
+        }
+      } catch (err) {
+        console.error('載入編輯資料失敗', err);
+        setError('載入編輯資料失敗');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadEdit();
+  }, [editId]);
 
   const removeAttachment = (index: number) => {
     setFormData((prev: FormDataType) => ({

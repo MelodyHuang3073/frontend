@@ -63,55 +63,35 @@ export class LeaveService {
 
       // Upload attachments if any
       const attachmentUrls: string[] = [];
-      if (data.attachments) {
+      if (data.attachments && data.attachments.length > 0) {
         for (const file of data.attachments) {
+          // 驗證檔案類型
+          if (!['image/jpeg', 'image/png', 'application/pdf'].includes(file.type)) {
+            return { success: false, error: `不支援的檔案類型: ${file.type}` };
+          }
+          // 驗證檔案大小
+          if (file.size > 10 * 1024 * 1024) {
+            return { success: false, error: `檔案大小超過限制: ${file.name}` };
+          }
+
+          const fileName = `${Date.now()}_${file.name}`;
+          const storageRef = ref(storage, `leaves/${user.uid}/${fileName}`);
           try {
-            // 驗證檔案類型
-            if (!['image/jpeg', 'image/png', 'application/pdf'].includes(file.type)) {
-              throw new Error(`不支援的檔案類型: ${file.type}`);
-            }
-
-            // 驗證檔案大小
-            if (file.size > 10 * 1024 * 1024) {
-              throw new Error(`檔案大小超過限制: ${file.name}`);
-            }
-
-            const fileName = `${Date.now()}_${file.name}`;
-            const storageRef = ref(storage, `leaves/${user.uid}/${fileName}`);
-            
-            console.log('開始上傳檔案:', fileName);
-            console.log('檔案類型:', file.type);
-            console.log('檔案大小:', file.size);
-            
-            const metadata = {
-              contentType: file.type,
-              customMetadata: {
-                'originalName': file.name
-              }
-            };
-            
-            const snapshot = await uploadBytes(storageRef, file, metadata);
-            console.log('檔案上傳成功');
+            const snapshot = await uploadBytes(storageRef, file);
             const downloadUrl = await getDownloadURL(snapshot.ref);
             attachmentUrls.push(downloadUrl);
           } catch (error: any) {
             console.error('檔案上傳錯誤:', error);
-            if (error.code === 'storage/unauthorized') {
-              throw new Error('沒有權限上傳檔案，請確認您已登入');
-            } else if (error.code === 'storage/canceled') {
-              throw new Error('檔案上傳被取消');
-            } else if (error.code === 'storage/unknown') {
-              throw new Error(`檔案上傳失敗: ${error.message}`);
-            }
-            throw new Error(`檔案 ${file.name} 上傳失敗: ${error.message}`);
+            return { success: false, error: error.message || '檔案上傳失敗' };
           }
         }
       }
 
-      const newLeaveData: FirestoreLeaveData = {
+      // Build a clean payload object (only defined, serializable fields)
+  const newLeaveData: Partial<FirestoreLeaveData> = {
         userId: user.uid,
         userName: user.displayName || user.email || 'Unknown',
-        type: data.type,
+  type: data.type,
         startDate: Timestamp.fromDate(data.startDate),
         endDate: Timestamp.fromDate(data.endDate),
         reason: data.reason,
@@ -121,27 +101,47 @@ export class LeaveService {
         updatedAt: Timestamp.now()
       };
 
-      const docRef = await addDoc(collection(db, 'leaves'), newLeaveData);
-      
-      // 轉換為前端使用的格式
+
+      // remove undefined fields just in case (use any to avoid TS index errors)
+      Object.keys(newLeaveData).forEach(k => {
+        if ((newLeaveData as any)[k] === undefined) delete (newLeaveData as any)[k];
+      });
+
+      let docRef;
+      try {
+        docRef = await addDoc(collection(db, 'leaves'), newLeaveData);
+      } catch (err: any) {
+        // Log detailed error for debugging (Firestore client can return complex errors)
+        try {
+          console.error('Firestore addDoc error details:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
+        } catch (jsonErr) {
+          console.error('Firestore addDoc error (no JSON):', err);
+        }
+        throw err;
+      }
+
+      // read back the created document to build a strongly-typed response
+      const createdSnap = await getDoc(docRef);
+      const createdData: any = createdSnap.exists() ? createdSnap.data() : {};
+      const toDate = (v: any) => (v && typeof v.toDate === 'function' ? v.toDate() : v);
       const leaveApplication: LeaveApplication = {
         id: docRef.id,
-        userId: newLeaveData.userId,
-        userName: newLeaveData.userName,
-        type: newLeaveData.type,
-        startDate: newLeaveData.startDate.toDate(),
-        endDate: newLeaveData.endDate.toDate(),
-        reason: newLeaveData.reason,
-        status: newLeaveData.status as any,
-        attachments: newLeaveData.attachments,
-        createdAt: newLeaveData.createdAt.toDate(),
-        updatedAt: newLeaveData.updatedAt.toDate(),
-        reviewedBy: newLeaveData.reviewedBy,
-        reviewedAt: newLeaveData.reviewedAt ? newLeaveData.reviewedAt.toDate() : null,
-        reviewComment: newLeaveData.reviewComment,
-        department: newLeaveData.department,
-        studentId: newLeaveData.studentId,
-        course: newLeaveData.course
+        userId: createdData.userId,
+        userName: createdData.userName,
+        type: createdData.type,
+        startDate: toDate(createdData.startDate),
+        endDate: toDate(createdData.endDate),
+        reason: createdData.reason,
+        status: createdData.status,
+        attachments: createdData.attachments || [],
+        createdAt: toDate(createdData.createdAt),
+        updatedAt: toDate(createdData.updatedAt),
+        reviewedBy: createdData.reviewedBy,
+        reviewedAt: createdData.reviewedAt ? toDate(createdData.reviewedAt) : null,
+        reviewComment: createdData.reviewComment,
+        department: createdData.department,
+        studentId: createdData.studentId,
+        course: createdData.course
       };
 
       return {
@@ -153,6 +153,47 @@ export class LeaveService {
         success: false,
         error: error.message
       };
+    }
+  }
+
+  static async updateLeave(id: string, data: Partial<CreateLeaveRequest> & { status?: string, reviewComment?: string }): Promise<ApiResponse<LeaveApplication>> {
+    try {
+      const docRef = doc(db, 'leaves', id);
+      const updatePayload: any = {
+        updatedAt: Timestamp.now()
+      };
+
+      if (data.type) updatePayload.type = data.type;
+      if (data.startDate) updatePayload.startDate = Timestamp.fromDate(data.startDate);
+      if (data.endDate) updatePayload.endDate = Timestamp.fromDate(data.endDate);
+      if (data.reason) updatePayload.reason = data.reason;
+      if (data.status) updatePayload.status = data.status;
+      if (data.reviewComment !== undefined) updatePayload.reviewComment = data.reviewComment;
+
+      await updateDoc(docRef, updatePayload);
+
+      // If attachments were provided, upload and append URLs
+      if (data.attachments && data.attachments.length > 0) {
+        const user = auth.currentUser;
+        if (!user) return { success: false, error: '請先登入' };
+        const urls: string[] = [];
+        for (const file of data.attachments) {
+          const fileName = `${Date.now()}_${file.name}`;
+          const storageRef = ref(storage, `leaves/${user.uid}/${fileName}`);
+          const snapshot = await uploadBytes(storageRef, file);
+          const downloadUrl = await getDownloadURL(snapshot.ref);
+          urls.push(downloadUrl);
+        }
+        // merge with existing attachments (don't overwrite unintentionally)
+        const docSnap = await getDoc(docRef);
+        const existing: any = docSnap.exists() ? (docSnap.data() as any).attachments || [] : [];
+        const merged = existing.concat(urls);
+        await updateDoc(docRef, { attachments: merged });
+      }
+
+      return await LeaveService.getLeaveById(id);
+    } catch (error: any) {
+      return { success: false, error: error.message };
     }
   }
 
