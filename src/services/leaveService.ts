@@ -310,4 +310,15 @@ export class LeaveService {
       };
     }
   }
+
+  static async getUserDoc(uid: string): Promise<any> {
+    try {
+      const userRef = doc(db, 'users', uid);
+      const userSnap = await getDoc(userRef);
+      return userSnap.exists() ? userSnap.data() : null;
+    } catch (error: any) {
+      console.error('getUserDoc error', error);
+      return null;
+    }
+  }
 }

@@ -1,71 +1,37 @@
-import React from 'react';
-import {
-  Box,
-  Paper,
-  Typography,
-  Card,
-  CardContent,
-  CardHeader,
-} from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Box, Button, Typography } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { auth } from '../firebase/config';
+import { LeaveService } from '../services/leaveService';
 
 const Dashboard: React.FC = () => {
-  // 這裡可以添加實際的統計數據
-  const stats = {
-    pendingLeaves: 2,
-    approvedLeaves: 5,
-    rejectedLeaves: 1,
-    totalLeaves: 8,
-  };
+  const navigate = useNavigate();
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      const userDoc = await LeaveService.getUserDoc(user.uid);
+      setRole(userDoc?.role || null);
+    };
+    load();
+  }, []);
 
   return (
-    <Box sx={{ flexGrow: 1, p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        儀表板
-      </Typography>
-      <Box sx={{ display: 'grid', gap: 3 }}>
-        <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(4, 1fr)' } }}>
-          <Card>
-            <CardHeader title="待審核請假" />
-            <CardContent>
-              <Typography variant="h3" align="center">
-                {stats.pendingLeaves}
-              </Typography>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader title="已核准請假" />
-            <CardContent>
-              <Typography variant="h3" align="center">
-                {stats.approvedLeaves}
-              </Typography>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader title="已拒絕請假" />
-            <CardContent>
-              <Typography variant="h3" align="center">
-                {stats.rejectedLeaves}
-              </Typography>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader title="總請假次數" />
-            <CardContent>
-              <Typography variant="h3" align="center">
-                {stats.totalLeaves}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Box>
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            最近的請假申請
-          </Typography>
-          {/* 這裡可以添加最近請假列表 */}
-        </Paper>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom>歡迎使用請假管理系統</Typography>
+      <Box sx={{ display: 'flex', gap: 2 }}>
+        {role !== 'teacher' && (
+          <Button variant="contained" onClick={() => navigate('/leave-application')}>申請請假</Button>
+        )}
+        <Button variant="outlined" onClick={() => navigate('/leave-list')}>查看請假列表</Button>
       </Box>
     </Box>
   );
 };
 
 export default Dashboard;
+
+// ensure this file is treated as a module under isolatedModules
+export {};

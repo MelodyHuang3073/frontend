@@ -101,17 +101,47 @@ export const LeaveService = {
         };
       }
 
-      const q = query(
-        collection(db, 'leaves'),
-        where('userId', '==', user.uid),
-        orderBy('createdAt', 'desc')
-      );
-      
+      // Determine user role and query accordingly
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const userData = userDoc.data();
+
+      let q;
+      if (userData && userData.role === 'teacher') {
+        // teachers see all leaves
+        q = query(collection(db, 'leaves'), orderBy('createdAt', 'desc'));
+      } else {
+        // students see only their own leaves
+        q = query(
+          collection(db, 'leaves'),
+          where('userId', '==', user.uid),
+          orderBy('createdAt', 'desc')
+        );
+      }
+
       const querySnapshot = await getDocs(q);
-      const leaves = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as LeaveApplication[];
+      const leaves = querySnapshot.docs.map(docSnap => {
+        const data = docSnap.data() as any;
+        const toDate = (v: any) => (v && typeof v.toDate === 'function' ? v.toDate() : v);
+        return {
+          id: docSnap.id,
+          userId: data.userId,
+          userName: data.userName,
+          type: data.type,
+          startDate: toDate(data.startDate),
+          endDate: toDate(data.endDate),
+          reason: data.reason,
+          status: data.status,
+          attachments: data.attachments || [],
+          createdAt: toDate(data.createdAt),
+          updatedAt: toDate(data.updatedAt),
+          reviewedBy: data.reviewedBy,
+          reviewedAt: data.reviewedAt ? toDate(data.reviewedAt) : null,
+          reviewComment: data.reviewComment,
+          department: data.department,
+          studentId: data.studentId,
+          course: data.course
+        } as LeaveApplication;
+      });
 
       return {
         success: true,
@@ -214,6 +244,17 @@ export const LeaveService = {
         success: false,
         error: error.message
       };
+    }
+  }
+  ,
+  getUserDoc: async (uid: string): Promise<any> => {
+    try {
+      const userRef = doc(db, 'users', uid);
+      const userSnap = await getDoc(userRef);
+      return userSnap.exists() ? userSnap.data() : null;
+    } catch (error: any) {
+      console.error('getUserDoc error', error);
+      return null;
     }
   }
 };

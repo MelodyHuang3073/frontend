@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 用戶集合的規則
+    match /users/{userId} {
+      // 允許讀取用戶自己的資料，教師可讀取學生資料
+      allow read: if request.auth != null && (
+        request.auth.uid == userId ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher'
+      );
+
+      // 允許創建新用戶 - 註冊時使用（只允許 student 或 teacher）
+      allow create: if request.auth != null 
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role in ['student', 'teacher'];
+
+      // 允許更新自己的資料（不能改變 role）
+      allow update: if request.auth != null 
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && request.resource.data.role == resource.data.role;
+    }
+
+    // 請假申請集合的規則
+    match /leaves/{leaveId} {
+      // 允許讀取自己的請假申請；教師可以讀取所有
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher'
+      );
+      
+      // 允許創建請假申請（只能由自身創建）
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
+        
+      // 允許更新自己的請假申請；教師可以更新（例如核准/拒絕）
+      allow update: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher'
+      );
+    }
+  }
+}

@@ -3,7 +3,6 @@ import {
   signInWithEmailAndPassword, 
   signOut,
   onAuthStateChanged,
-  User as FirebaseUser
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -18,7 +17,7 @@ interface RegisterData {
   username: string;
   email: string;
   password: string;
-  role: string;
+  role: 'student' | 'teacher';
   studentId?: string;
 }
 
@@ -95,7 +94,7 @@ export class AuthService {
         uid: userCredential.user.uid,
         username: data.username,
         email: data.email,
-        role: data.role as 'student' | 'teacher' | 'admin',
+        role: data.role as 'student' | 'teacher',
         studentId: data.studentId,
         createdAt: new Date()
       };

@@ -15,7 +15,7 @@ import {
   Avatar,
 } from '@mui/material';
 import {
-  Dashboard as DashboardIcon,
+  // Dashboard removed - not used
   Assignment as AssignmentIcon,
   List as ListIcon,
   ExitToApp as ExitToAppIcon,
@@ -38,11 +38,16 @@ const Layout: React.FC = () => {
   
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
 
-  const menuItems = [
-    { text: '主頁', icon: <DashboardIcon />, path: '/dashboard' },
-    { text: '申請請假', icon: <AssignmentIcon />, path: '/leave-application' },
-    { text: '請假列表', icon: <ListIcon />, path: '/leave-list' },
-  ];
+  // menu items will be generated based on user role
+  const getMenuItems = (role?: string) => {
+    const items: { text: string; icon: React.ReactElement; path: string }[] = [];
+    // Make leave application the system homepage for students
+    if (role !== 'teacher') {
+      items.push({ text: '申請請假', icon: <AssignmentIcon />, path: '/leave-application' });
+    }
+    items.push({ text: '請假列表', icon: <ListIcon />, path: '/leave-list' });
+    return items;
+  };
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user: User | null) => {
@@ -94,7 +99,13 @@ const Layout: React.FC = () => {
     <>
       <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
         <Toolbar>
-          <Typography variant="h6" noWrap component="div">
+          <Typography
+            variant="h6"
+            noWrap
+            component="div"
+            sx={{ cursor: 'pointer' }}
+            onClick={() => navigate(userInfo?.role === 'teacher' ? '/leave-list' : '/leave-application')}
+          >
             請假管理系統
           </Typography>
           <Box sx={{ flexGrow: 1 }} />
@@ -117,7 +128,7 @@ const Layout: React.FC = () => {
         <Toolbar />
         <Box sx={{ overflow: 'auto', display: 'flex', flexDirection: 'column', height: '100%' }}>
           <List>
-            {menuItems.map((item) => (
+            {getMenuItems(userInfo?.role).map((item) => (
               <ListItem
                 component="li"
                 key={item.text}

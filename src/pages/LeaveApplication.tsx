@@ -32,6 +32,7 @@ interface FormDataType {
 
 const LeaveApplication: React.FC = () => {
   const navigate = useNavigate();
+  const [role, setRole] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormDataType>({
     leaveType: LeaveType.PERSONAL,
     startDate: null,
@@ -138,6 +139,25 @@ const LeaveApplication: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Redirect teachers away from the application page
+  React.useEffect(() => {
+    const checkRole = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      try {
+        const userDoc = await LeaveService.getUserDoc(user.uid);
+        const userRole = userDoc?.role;
+        setRole(userRole || null);
+        if (userRole === 'teacher') {
+          navigate('/leave-list');
+        }
+      } catch (err) {
+        console.error('無法取得使用者角色', err);
+      }
+    };
+    checkRole();
+  }, [navigate]);
 
   const removeAttachment = (index: number) => {
     setFormData((prev: FormDataType) => ({

@@ -12,7 +12,7 @@ export interface User {
   uid: string;
   username: string;
   email: string;
-  role: 'student' | 'teacher' | 'admin';
+  role: 'student' | 'teacher';
   studentId?: string;
   teacherId?: string;
   createdAt: Date;

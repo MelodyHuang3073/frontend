@@ -36,6 +36,7 @@ const LeaveList: React.FC = () => {
   const [selectedLeave, setSelectedLeave] = useState<LeaveApplication | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [leaves, setLeaves] = useState<LeaveApplication[]>([]);
+  const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,6 +45,12 @@ const LeaveList: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
+        // fetch current user's role
+        const user = (await import('../firebase/config')).auth.currentUser;
+        if (user) {
+          const userDoc = await LeaveService.getUserDoc(user.uid);
+          setRole(userDoc?.role || null);
+        }
         const response = await LeaveService.getLeaves();
         if (response.success && response.data) {
           setLeaves(response.data);
@@ -161,34 +168,57 @@ const LeaveList: React.FC = () => {
                       >
                         <VisibilityIcon />
                       </IconButton>
-                      {leave.status === 'pending' && (
-                        <>
-                          <IconButton 
-                            size="small" 
-                            color="primary"
-                            onClick={() => {/* TODO: 實現編輯功能 */}}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton 
-                            size="small" 
-                            color="error"
-                            onClick={async () => {
-                              if (window.confirm('確定要刪除這筆請假記錄嗎？')) {
-                                try {
-                                  const response = await LeaveService.deleteLeave(leave.id);
-                                  if (response.success) {
-                                    setLeaves(leaves.filter(l => l.id !== leave.id));
-                                  }
-                                } catch (err) {
-                                  setError('刪除失敗，請稍後再試');
-                                }
+                      {role === 'teacher' ? (
+                        // teacher: can approve/reject pending leaves
+                        leave.status === 'pending' && (
+                          <>
+                            <Button size="small" onClick={async () => {
+                              const res = await LeaveService.updateLeaveStatus(leave.id, 'approved', 'Approved by teacher');
+                              if (res.success) {
+                                const updated = await LeaveService.getLeaves();
+                                if (updated.success && updated.data) setLeaves(updated.data);
                               }
-                            }}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </>
+                            }}>核准</Button>
+                            <Button size="small" color="error" onClick={async () => {
+                              const res = await LeaveService.updateLeaveStatus(leave.id, 'rejected', 'Rejected by teacher');
+                              if (res.success) {
+                                const updated = await LeaveService.getLeaves();
+                                if (updated.success && updated.data) setLeaves(updated.data);
+                              }
+                            }}>拒絕</Button>
+                          </>
+                        )
+                      ) : (
+                        // student: can edit/delete their pending leaves
+                        leave.status === 'pending' && (
+                          <>
+                            <IconButton 
+                              size="small" 
+                              color="primary"
+                              onClick={() => {/* TODO: 實現編輯功能 */}}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                            <IconButton 
+                              size="small" 
+                              color="error"
+                              onClick={async () => {
+                                if (window.confirm('確定要刪除這筆請假記錄嗎？')) {
+                                  try {
+                                    const response = await LeaveService.deleteLeave(leave.id);
+                                    if (response.success) {
+                                      setLeaves(leaves.filter(l => l.id !== leave.id));
+                                    }
+                                  } catch (err) {
+                                    setError('刪除失敗，請稍後再試');
+                                  }
+                                }
+                              }}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </>
+                        )
                       )}
                     </TableCell>
                   </TableRow>
