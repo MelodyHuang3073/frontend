@@ -9,7 +9,7 @@ import {
   Alert,
 } from '@mui/material';
 import { AuthService } from '../services';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -18,6 +18,9 @@ const Login: React.FC = () => {
     password: '',
   });
   const [error, setError] = useState('');
+  const location = useLocation();
+  const registeredEmail = (location.state as any)?.email;
+  const justRegistered = (location.state as any)?.registered;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -29,7 +32,11 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await AuthService.login(formData);
+      const res = await AuthService.login(formData);
+      // If AuthService returns ApiResponse style
+      if ((res as any)?.success === false) {
+        throw new Error((res as any).error || '登入失敗');
+      }
       navigate('/dashboard');
     } catch (error) {
       console.error('Login error:', error);
@@ -65,6 +72,11 @@ const Login: React.FC = () => {
             請假系統登入
           </Typography>
           <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
+            {justRegistered && registeredEmail && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                帳號已建立，系統已發送驗證郵件至 {registeredEmail}，請先完成電子郵件驗證再登入。
+              </Alert>
+            )}
             {error && (
               <Alert severity="error" sx={{ mb: 2 }}>
                 {error}

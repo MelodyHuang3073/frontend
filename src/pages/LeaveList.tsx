@@ -190,8 +190,8 @@ const LeaveList: React.FC = () => {
                           </>
                         )
                       ) : (
-                        // student: can edit/delete their pending leaves
-                        leave.status === 'pending' && (
+                        // student: can edit their pending or rejected leaves; can delete only pending
+                        (leave.status === 'pending' || leave.status === 'rejected') && (
                           <>
                             <IconButton 
                               size="small" 
@@ -203,30 +203,47 @@ const LeaveList: React.FC = () => {
                             >
                               <EditIcon />
                             </IconButton>
-                            <IconButton 
-                              size="small" 
-                              color="error"
-                              onClick={async () => {
-                                if (!window.confirm('確定要刪除這筆請假記錄嗎？')) return;
-                                try {
-                                  setDeletingId(leave.id);
-                                  const response = await LeaveService.deleteLeave(leave.id);
-                                  if (response.success) {
-                                    // 使用 functional update 避免閉包問題
-                                    setLeaves(prev => prev.filter(l => l.id !== leave.id));
-                                  } else {
-                                    setError(response.error || '刪除失敗，請稍後再試');
+                            {leave.status === 'pending' && (
+                              <IconButton 
+                                size="small" 
+                                color="error"
+                                onClick={async () => {
+                                  if (!window.confirm('確定要刪除這筆請假記錄嗎？')) return;
+                                  try {
+                                    // debug: print current authenticated uid and leave ownership/status
+                                    try {
+                                      const authModule = await import('../firebase');
+                                      const currentUid = authModule.auth?.currentUser?.uid;
+                                      console.log('debug delete: currentUid=', currentUid, 'leave.userId=', leave.userId, 'leave.status=', leave.status, 'leave.id=', leave.id);
+                                    } catch (e) {
+                                      console.warn('debug delete: cannot read auth currentUser', e);
+                                    }
+                                    if (leave.status !== 'pending') {
+                                      setError('僅待審核的請假可由學生自行取消');
+                                      return;
+                                    }
+                                    setDeletingId(leave.id);
+                                    const response = await LeaveService.deleteLeave(leave.id);
+                                    if (response.success) {
+                                      // 使用 functional update 避免閉包問題
+                                      setLeaves(prev => prev.filter(l => l.id !== leave.id));
+                                    } else {
+                                      // 打印完整物件以便診斷
+                                      console.error('deleteLeave response error object:', response);
+                                      setError(response.error || '刪除失敗，請稍後再試（請查看 console）');
+                                    }
+                                  } catch (err: any) {
+                                    console.error('deleteLeave threw:', err);
+                                    setError(err?.message || '刪除失敗，請稍後再試');
+                                  } finally {
+                                    setDeletingId(null);
                                   }
-                                } catch (err: any) {
-                                  setError(err?.message || '刪除失敗，請稍後再試');
-                                } finally {
-                                  setDeletingId(null);
-                                }
-                              }}
-                              disabled={deletingId === leave.id}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
+                                }}
+                                disabled={deletingId === leave.id}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            )}
                           </>
                         )
                       )}

@@ -193,9 +193,30 @@ export const LeaveService = {
       const docRef = doc(db, 'leaves', id);
       await updateDoc(docRef, {
         status,
-        comment,
+        reviewComment: comment,
         updatedAt: Timestamp.now()
       });
+
+      // create a notification document so a backend worker / cloud function can send an email
+      try {
+        const leaveSnap = await getDoc(docRef);
+        if (leaveSnap.exists()) {
+          const leaveData: any = leaveSnap.data();
+          const recipientUid = leaveData.userId;
+          const recipientEmail = leaveData.userEmail || leaveData.userName || null;
+          await addDoc(collection(db, 'notifications'), {
+            toUid: recipientUid,
+            toEmail: recipientEmail,
+            leaveId: id,
+            status,
+            comment,
+            createdAt: Timestamp.now(),
+            sent: false
+          });
+        }
+      } catch (notifyErr) {
+        console.warn('建立通知文件失敗（非致命）:', notifyErr);
+      }
 
       return await LeaveService.getLeaveById(id);
     } catch (error: any) {

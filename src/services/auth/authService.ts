@@ -7,7 +7,6 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
-import { User } from '../../types';
 
 interface LoginCredentials {
   email: string;
@@ -26,6 +25,13 @@ export const AuthService = {
   login: async ({ email, password }: LoginCredentials): Promise<FirebaseUser> => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+      // 檢查是否已驗證電子郵件
+      if (!userCredential.user.emailVerified) {
+        // 主動登出，並回報錯誤，要求使用者驗證電子郵件
+        await auth.signOut();
+        throw new Error('請先完成電子郵件驗證，才可登入');
+      }
       return userCredential.user;
     } catch (error: any) {
       throw new Error(error.message);

@@ -15,7 +15,7 @@ import {
   SelectChangeEvent,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
@@ -127,8 +127,15 @@ const Register: React.FC = () => {
         throw firestoreError;
       }
 
-      // 註冊成功，導航到登入頁面
-      navigate('/login');
+      // 發送驗證郵件並通知使用者檢查收件匣
+      try {
+        await sendEmailVerification(userCredential.user);
+      } catch (verifyErr) {
+        console.warn('發送驗證郵件失敗:', verifyErr);
+      }
+
+      // 註冊成功，提示使用者先完成電子郵件驗證後再登入
+      navigate('/login', { state: { registered: true, email: formData.email } });
     } catch (err: any) {
       console.error('註冊錯誤:', err);
       console.log('Firebase error code:', err.code); // 添加錯誤碼日誌

@@ -36,8 +36,9 @@ service cloud.firestore {
         && request.resource.data.userId == request.auth.uid;
         
       // 允許更新自己的請假申請；教師可以更新（例如核准/拒絕）
+      // 學生只能在自己的請假為 pending 或 rejected 時修改（被拒後可修改並重新提交）
       allow update: if request.auth != null && (
-        resource.data.userId == request.auth.uid ||
+        (resource.data.userId == request.auth.uid && resource.data.status in ['pending', 'rejected']) ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher'
       );
 

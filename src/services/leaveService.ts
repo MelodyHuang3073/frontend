@@ -315,14 +315,13 @@ export class LeaveService {
     try {
       const docRef = doc(db, 'leaves', id);
       await deleteDoc(docRef);
-      return {
-        success: true
-      };
+      return { success: true };
     } catch (error: any) {
-      return {
-        success: false,
-        error: error.message
-      };
+      // If Firebase SDK exposes code, include it for debugging
+      const errMsg = error?.message || '刪除失敗';
+      const code = error?.code || null;
+      console.error('deleteDoc error:', { code, message: errMsg, raw: error });
+      return { success: false, error: `${errMsg}${code ? ` (code: ${code})` : ''}` };
     }
   }
 
