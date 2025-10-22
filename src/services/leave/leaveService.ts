@@ -107,15 +107,11 @@ export const LeaveService = {
 
       let q;
       if (userData && userData.role === 'teacher') {
-        // teachers see all leaves
-        q = query(collection(db, 'leaves'), orderBy('createdAt', 'desc'));
+        // teachers see all leaves (simplest query for testing)
+        q = query(collection(db, 'leaves'));
       } else {
-        // students see only their own leaves
-        q = query(
-          collection(db, 'leaves'),
-          where('userId', '==', user.uid),
-          orderBy('createdAt', 'desc')
-        );
+        // students see only their own leaves (simplest query for testing)
+        q = query(collection(db, 'leaves'), where('userId', '==', user.uid));
       }
 
       const querySnapshot = await getDocs(q);
@@ -148,6 +144,9 @@ export const LeaveService = {
         data: leaves
       };
     } catch (error: any) {
+      console.error('LeaveService.getLeaves error object:', error);
+      // if firestore returns structured error, include code/message
+      if (error?.code || error?.message) console.error('Firestore error code/message:', error.code, error.message);
       return {
         success: false,
         error: error.message
