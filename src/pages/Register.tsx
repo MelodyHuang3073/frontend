@@ -28,6 +28,7 @@ const Register: React.FC = () => {
     confirmPassword: '',
     role: '',
     studentId: '',
+    staffId: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -47,7 +48,9 @@ const Register: React.FC = () => {
       ...prev,
       [name]: value,
       // 如果從學生改為教師，清除學號
-      ...(name === 'role' && value !== 'student' ? { studentId: '' } : {})
+      // 當角色改變時，根據角色清除對方的識別欄位
+      ...(name === 'role' && value !== 'student' ? { studentId: '' } : {}),
+      ...(name === 'role' && value !== 'teacher' ? { staffId: '' } : {})
     }));
     setError('');
   };
@@ -67,13 +70,17 @@ const Register: React.FC = () => {
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('密碼長度至少需要6個字元');
+    if (formData.password.length < 8) {
+      setError('密碼長度至少需要8個字元');
       return;
     }
 
     if (formData.role === 'student' && !formData.studentId) {
       setError('學生必須填寫學號');
+      return;
+    }
+    if (formData.role === 'teacher' && !formData.staffId) {
+      setError('教師必須填寫教職員編號');
       return;
     }
 
@@ -87,9 +94,10 @@ const Register: React.FC = () => {
         return;
       }
 
-      // 密碼強度驗證
-      if (!/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/.test(formData.password)) {
-        setError('密碼必須至少包含6個字符，包括字母和數字');
+      // 密碼強度驗證：允許特殊字元，至少8個字元，需包含至少一個字母與一個數字
+      const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d\W]{8,}$/;
+      if (!passwordRegex.test(formData.password)) {
+        setError('密碼至少8個字元，且須包含至少一個字母與一個數字（可包含特殊字元）');
         return;
       }
 
@@ -112,6 +120,7 @@ const Register: React.FC = () => {
         email: formData.email,
         role: formData.role,
         studentId: formData.role === 'student' ? formData.studentId : null,
+        staffId: formData.role === 'teacher' ? formData.staffId : null,
         createdAt: new Date(),
         updatedAt: new Date(),
         status: 'active',
@@ -247,6 +256,19 @@ const Register: React.FC = () => {
                 label="學號"
                 name="studentId"
                 value={formData.studentId}
+                onChange={handleInputChange}
+                disabled={loading}
+              />
+            )}
+            {formData.role === 'teacher' && (
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                id="staffId"
+                label="教職員編號"
+                name="staffId"
+                value={formData.staffId}
                 onChange={handleInputChange}
                 disabled={loading}
               />

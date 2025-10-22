@@ -103,10 +103,15 @@ export const LeaveService = {
 
       // Determine user role and query accordingly
       const userDoc = await getDoc(doc(db, 'users', user.uid));
-      const userData = userDoc.data();
+      const userData = userDoc.exists() ? userDoc.data() : null;
+      if (!userData) {
+        console.warn(`LeaveService.getLeaves: no users/${user.uid} document found — assuming student role`);
+      }
+
+      const role = (userData && userData.role) ? userData.role : 'student';
 
       let q;
-      if (userData && userData.role === 'teacher') {
+      if (role === 'teacher') {
         // teachers see all leaves
         q = query(collection(db, 'leaves'), orderBy('createdAt', 'desc'));
       } else {
