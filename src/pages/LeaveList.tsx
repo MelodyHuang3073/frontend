@@ -57,15 +57,10 @@ const LeaveList: React.FC = () => {
           setLeaves(response.data);
           console.log('取得請假紀錄:', response.data); // debug log
         } else {
-          console.error('getLeaves failed response:', response);
           setError(response.error || '無法獲取請假記錄');
         }
       } catch (err) {
         console.error('獲取請假記錄錯誤:', err);
-        // print nested Firestore webchannel errors if present
-        try {
-          console.error('err.response / details:', (err as any).response || (err as any).details || (err as any).code);
-        } catch (e) {}
         setError('獲取請假記錄時發生錯誤，請稍後再試');
       } finally {
         setLoading(false);
@@ -149,6 +144,7 @@ const LeaveList: React.FC = () => {
               <TableRow>
                 <TableCell>假別</TableCell>
                 {role === 'teacher' && <TableCell>申請人</TableCell>}
+                {role === 'teacher' && <TableCell>提交時間</TableCell>}
                 <TableCell>開始時間</TableCell>
                 <TableCell>結束時間</TableCell>
                 <TableCell>狀態</TableCell>
@@ -169,11 +165,16 @@ const LeaveList: React.FC = () => {
                         )}
                       </TableCell>
                     )}
+                    {role === 'teacher' && (
+                      <TableCell>
+                        {leave.createdAt ? format(leave.createdAt, 'yyyy/MM/dd HH:mm', { locale: zhTW }) : '—'}
+                      </TableCell>
+                    )}
                     <TableCell>
-                       {format(leave.startDate, 'yyyy/MM/dd HH:mm', { locale: zhTW })}
+                       {leave.startDate ? format(leave.startDate, 'yyyy/MM/dd HH:mm', { locale: zhTW }) : '—'}
                     </TableCell>
                     <TableCell>
-                      {format(leave.endDate, 'yyyy/MM/dd HH:mm', { locale: zhTW })}
+                      {leave.endDate ? format(leave.endDate, 'yyyy/MM/dd HH:mm', { locale: zhTW }) : '—'}
                     </TableCell>
                     <TableCell>{getStatusChip(leave.status)}</TableCell>
                     <TableCell>
@@ -266,7 +267,7 @@ const LeaveList: React.FC = () => {
                 ))}
               {!loading && leaves.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={role === 'teacher' ? 6 : 5} align="center">
+                  <TableCell colSpan={role === 'teacher' ? 7 : 5} align="center">
                     尚無請假紀錄
                   </TableCell>
                 </TableRow>
@@ -300,11 +301,6 @@ const LeaveList: React.FC = () => {
               <Typography variant="subtitle2" gutterBottom>
                 假別：{getLeaveTypeText(selectedLeave.type)}
               </Typography>
-              {role === 'teacher' && (
-                <Typography variant="subtitle2" gutterBottom>
-                  申請人：{selectedLeave.userName}{selectedLeave.studentId ? `（${selectedLeave.studentId}）` : ''}
-                </Typography>
-              )}
               <Typography variant="subtitle2" gutterBottom>
                 開始時間：{format(selectedLeave.startDate, 'yyyy/MM/dd HH:mm', { locale: zhTW })}
               </Typography>

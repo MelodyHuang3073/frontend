@@ -3,20 +3,17 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // 用戶集合的規則
     match /users/{userId} {
-      // 允許讀取用戶自己的資料，教師可讀取學生資料
-      allow read: if request.auth != null && (
-        request.auth.uid == userId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher'
-      );
-
-      // 允許創建新用戶 - 註冊時使用（只允許 student 或 teacher）
+      // 允許讀取用戶自己的資料
+      allow read: if request.auth != null && (request.auth.uid == userId);
+      
+      // 允許創建新用戶 - 註冊時使用
       allow create: if request.auth != null 
         && request.auth.uid == userId
         && request.resource.data.uid == userId
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.role in ['student', 'teacher'];
 
-      // 允許更新自己的資料（不能改變 role）
+      // 允許更新自己的資料
       allow update: if request.auth != null 
         && request.auth.uid == userId
         && request.resource.data.uid == userId
@@ -25,28 +22,18 @@ service cloud.firestore {
 
     // 請假申請集合的規則
     match /leaves/{leaveId} {
-      // 允許讀取自己的請假申請；教師可以讀取所有
-      allow read: if request.auth != null && (
-        resource.data.userId == request.auth.uid || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher'
-      );
+      // 允許讀取自己的請假申請，教師可以讀取所有
+      allow read: if request.auth != null;
       
-      // 允許創建請假申請（只能由自身創建）
-      allow create: if request.auth != null
-        && request.resource.data.userId == request.auth.uid;
+      // 允許創建請假申請
+      allow create: if request.auth != null;
         
-      // 允許更新自己的請假申請；教師可以更新（例如核准/拒絕）
-      // 學生只能在自己的請假為 pending 或 rejected 時修改（被拒後可修改並重新提交）
-      allow update: if request.auth != null && (
-        (resource.data.userId == request.auth.uid && resource.data.status in ['pending', 'rejected']) ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher'
-      );
-
-      // 允許刪除：僅允許申請人刪除自己處於 pending 狀態的請假（教師不得刪除學生請假）
-      allow delete: if request.auth != null && (
-        resource.data.userId == request.auth.uid &&
-        resource.data.status == 'pending'
-      );
+      // 允許更新自己的請假申請
+      allow update: if request.auth != null;
+      
+      allow delete: if request.auth != null &&
+  		resource.data.userId == request.auth.uid &&
+  		resource.data.status in ['pending','rejected'];
     }
   }
 }

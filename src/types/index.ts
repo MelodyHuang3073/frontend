@@ -40,8 +40,6 @@ export interface LeaveApplicationFirestore {
   userName: string;
   type: LeaveType;
   startDate: Timestamp;
-  // backwards-compatible field name (some indexes use 'startedDate')
-  startedDate?: Timestamp;
   endDate: Timestamp;
   reason: string;
   status: LeaveStatus;
