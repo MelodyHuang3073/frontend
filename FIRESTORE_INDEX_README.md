@@ -5,11 +5,17 @@ Deployment steps for Firestore indexes
    npm install -g firebase-tools
    firebase login
 
+
 2) From the `frontend` folder (where this README and `firestore.indexes.json` live), run:
 
-   firebase firestore:indexes:update --project <YOUR_PROJECT_ID> --quiet --file ./firestore.indexes.json
+   # login if needed
+   firebase login
 
-   (Alternatively you can use `firebase deploy --only firestore:indexes --project <YOUR_PROJECT_ID>` if your firebase.json references the indexes file.)
+   # update the indexes (shows output unless you pass --quiet)
+   firebase firestore:indexes:update --project <YOUR_PROJECT_ID> --file .\firestore.indexes.json
+
+   # or deploy only the indexes (if firebase.json is configured)
+   firebase deploy --only firestore:indexes --project <YOUR_PROJECT_ID>
 
 3) Verify index creation in Firebase Console -> Firestore -> Indexes, or run `firebase firestore:indexes:list --project <YOUR_PROJECT_ID>`.
 

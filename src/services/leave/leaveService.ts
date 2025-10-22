@@ -50,8 +50,10 @@ export const LeaveService = {
         userId: user.uid,
         userName: user.displayName || user.email || 'Unknown',
         type: data.type,
-        startDate: Timestamp.fromDate(data.startDate),
-        endDate: Timestamp.fromDate(data.endDate),
+  startDate: Timestamp.fromDate(data.startDate),
+  // also include startedDate to be compatible with indexes that use that name
+  startedDate: Timestamp.fromDate(data.startDate),
+  endDate: Timestamp.fromDate(data.endDate),
         reason: data.reason,
         status: 'pending',
         attachments: attachmentUrls,
@@ -107,11 +109,22 @@ export const LeaveService = {
 
       let q;
       if (userData && userData.role === 'teacher') {
-        // teachers see all leaves (simplest query for testing)
-        q = query(collection(db, 'leaves'));
+        // teachers see all leaves ordered by createdAt DESC, startedDate ASC, then document name
+        q = query(
+          collection(db, 'leaves'),
+          orderBy('createdAt', 'desc'),
+          orderBy('startedDate', 'asc'),
+          orderBy('__name__', 'asc')
+        );
       } else {
-        // students see only their own leaves (simplest query for testing)
-        q = query(collection(db, 'leaves'), where('userId', '==', user.uid));
+        // students see only their own leaves with same ordering
+        q = query(
+          collection(db, 'leaves'),
+          where('userId', '==', user.uid),
+          orderBy('createdAt', 'desc'),
+          orderBy('startedDate', 'asc'),
+          orderBy('__name__', 'asc')
+        );
       }
 
       const querySnapshot = await getDocs(q);
@@ -123,7 +136,7 @@ export const LeaveService = {
           userId: data.userId,
           userName: data.userName,
           type: data.type,
-          startDate: toDate(data.startDate),
+          startDate: toDate(data.startDate || data.startedDate),
           endDate: toDate(data.endDate),
           reason: data.reason,
           status: data.status,
@@ -166,9 +179,26 @@ export const LeaveService = {
         };
       }
 
+      const raw = docSnap.data() as any;
+      const toDate = (v: any) => (v && typeof v.toDate === 'function' ? v.toDate() : v);
       const leaveApplication = {
         id: docSnap.id,
-        ...docSnap.data()
+        userId: raw.userId,
+        userName: raw.userName,
+        type: raw.type,
+        startDate: toDate(raw.startDate || raw.startedDate),
+        endDate: toDate(raw.endDate),
+        reason: raw.reason,
+        status: raw.status,
+        attachments: raw.attachments || [],
+        createdAt: toDate(raw.createdAt),
+        updatedAt: toDate(raw.updatedAt),
+        reviewedBy: raw.reviewedBy,
+        reviewedAt: raw.reviewedAt ? toDate(raw.reviewedAt) : null,
+        reviewComment: raw.reviewComment,
+        department: raw.department,
+        studentId: raw.studentId,
+        course: raw.course
       } as LeaveApplication;
 
       return {
@@ -249,7 +279,10 @@ export const LeaveService = {
       };
 
       if (data.type) updatePayload.type = data.type;
-      if (data.startDate) updatePayload.startDate = Timestamp.fromDate(data.startDate);
+      if (data.startDate) {
+        updatePayload.startDate = Timestamp.fromDate(data.startDate);
+        updatePayload.startedDate = Timestamp.fromDate(data.startDate);
+      }
       if (data.endDate) updatePayload.endDate = Timestamp.fromDate(data.endDate);
       if (data.reason) updatePayload.reason = data.reason;
       if (data.status) updatePayload.status = data.status;
