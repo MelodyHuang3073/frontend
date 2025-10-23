@@ -19,6 +19,12 @@ import {
   DialogActions,
   CircularProgress,
   Alert,
+  Divider,
+  Stack,
+  Link,
+  List,
+  ListItem,
+  ListItemText,
 } from '@mui/material';
 import {
   Visibility as VisibilityIcon,
@@ -294,36 +300,85 @@ const LeaveList: React.FC = () => {
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>請假詳情</DialogTitle>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>請假詳情</Typography>
+            {selectedLeave && (
+              <Chip
+                label={(() => {
+                  switch (selectedLeave.status) {
+                    case 'pending': return '待審核';
+                    case 'approved': return '已核准';
+                    case 'rejected': return '已拒絕';
+                    default: return '未知狀態';
+                  }
+                })()}
+                color={selectedLeave?.status === 'approved' ? 'success' : selectedLeave?.status === 'rejected' ? 'error' : 'warning'}
+                sx={{ fontWeight: 700, fontSize: '0.95rem' }}
+              />
+            )}
+          </Box>
+        </DialogTitle>
         <DialogContent>
           {selectedLeave && (
-            <Box sx={{ pt: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                假別：{getLeaveTypeText(selectedLeave.type)}
-              </Typography>
-              <Typography variant="subtitle2" gutterBottom>
-                開始時間：{format(selectedLeave.startDate, 'yyyy/MM/dd HH:mm', { locale: zhTW })}
-              </Typography>
-              <Typography variant="subtitle2" gutterBottom>
-                結束時間：{format(selectedLeave.endDate, 'yyyy/MM/dd HH:mm', { locale: zhTW })}
-              </Typography>
-              <Typography variant="subtitle2" gutterBottom>
-                請假原因：{selectedLeave.reason}
-              </Typography>
-              {selectedLeave.attachments?.length > 0 && (
-                <>
-                  <Typography variant="subtitle2" gutterBottom>
-                    附件：
+            <Box sx={{ pt: 1 }}>
+              <Stack spacing={2}>
+                <Box>
+                  <Typography sx={{ fontSize: { xs: '1.15rem', sm: '1.35rem' }, fontWeight: 800 }}>
+                    {selectedLeave.userName}
                   </Typography>
-                  {selectedLeave.attachments.map((attachment: string, index: number) => (
-                    <Typography key={index} variant="body2">
-                      <a href={attachment} target="_blank" rel="noopener noreferrer">
-                        附件 {index + 1}
-                      </a>
+                  {selectedLeave.studentId && (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      學號：{selectedLeave.studentId}
                     </Typography>
-                  ))}
-                </>
-              )}
+                  )}
+                </Box>
+
+                <Divider />
+
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                  <Box>
+                    <Typography sx={{ fontWeight: 700, mb: 0.5 }}>假別</Typography>
+                    <Typography sx={{ fontSize: '1rem' }}>{getLeaveTypeText(selectedLeave.type)}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontWeight: 700, mb: 0.5 }}>提交時間</Typography>
+                    <Typography sx={{ fontSize: '1rem' }}>{selectedLeave.createdAt ? format(selectedLeave.createdAt, 'yyyy/MM/dd HH:mm', { locale: zhTW }) : '—'}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontWeight: 700, mb: 0.5 }}>開始時間</Typography>
+                    <Typography sx={{ fontSize: '1rem' }}>{selectedLeave.startDate ? format(selectedLeave.startDate, 'yyyy/MM/dd HH:mm', { locale: zhTW }) : '—'}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontWeight: 700, mb: 0.5 }}>結束時間</Typography>
+                    <Typography sx={{ fontSize: '1rem' }}>{selectedLeave.endDate ? format(selectedLeave.endDate, 'yyyy/MM/dd HH:mm', { locale: zhTW }) : '—'}</Typography>
+                  </Box>
+                </Box>
+
+                <Box>
+                  <Typography sx={{ fontWeight: 700, mb: 0.5 }}>請假原因</Typography>
+                  <Typography sx={{ fontSize: '1rem', whiteSpace: 'pre-wrap' }}>{selectedLeave.reason}</Typography>
+                </Box>
+
+                {selectedLeave.attachments?.length > 0 && (
+                  <Box>
+                    <Typography sx={{ fontWeight: 700, mb: 1 }}>附件</Typography>
+                    <List dense>
+                      {selectedLeave.attachments.map((attachment: string, index: number) => (
+                        <ListItem key={index} sx={{ pl: 0 }}>
+                          <ListItemText
+                            primary={
+                              <Link href={attachment} target="_blank" rel="noopener noreferrer" underline="hover" sx={{ fontWeight: 600 }}>
+                                檔案 {index + 1}
+                              </Link>
+                            }
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Box>
+                )}
+              </Stack>
             </Box>
           )}
         </DialogContent>

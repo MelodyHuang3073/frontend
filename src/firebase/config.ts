@@ -8,7 +8,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyAu1LJq7QEXHiy-mmLsci-6NITtsX-_sF8",
   authDomain: "software-engineering-edc96.firebaseapp.com",
   projectId: "software-engineering-edc96",
-  storageBucket: "software-engineering-edc96.appspot.com",
+  storageBucket: "software-engineering-edc96.firebasestorage.app",
   messagingSenderId: "103643147167",
   appId: "1:103643147167:web:18fde0cfafd778f988ebaa",
   measurementId: "G-9SQVKVSCD8"
