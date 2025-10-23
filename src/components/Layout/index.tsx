@@ -19,11 +19,10 @@ import {
   Assignment as AssignmentIcon,
   List as ListIcon,
   ExitToApp as ExitToAppIcon,
-  Person as PersonIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../../firebase';
-import { doc, getDoc, DocumentData } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 
 const drawerWidth = 240;

@@ -7,8 +7,19 @@
       "https://127.0.0.1:3000",
       "https://softwareengineering-two.vercel.app"
     ],
-    "method": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    "responseHeader": ["Content-Type", "x-goog-resumable", "X-Requested-With", "Authorization"],
+    "method": [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE",
+      "OPTIONS"
+    ],
+    "responseHeader": [
+      "Content-Type",
+      "x-goog-resumable",
+      "X-Requested-With",
+      "Authorization"
+    ],
     "maxAgeSeconds": 3600
   }
 ]

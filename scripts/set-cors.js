@@ -30,8 +30,38 @@ async function main() {
     const corsRaw = fs.readFileSync(corsFile, 'utf8');
     const cors = JSON.parse(corsRaw);
 
-    // Update this if your firebase config uses a different bucket
-    const BUCKET_NAME = 'software-engineering-edc96.appspot.com';
+    // Determine bucket name in this order:
+    // 1) Environment variable BUCKET_NAME
+    // 2) storageBucket value in src/firebase/config.ts (if present)
+    // 3) Hardcoded fallback
+    let BUCKET_NAME = process.env.BUCKET_NAME || '';
+
+    if (!BUCKET_NAME) {
+      // Try to read the firebase client config file to extract storageBucket
+      try {
+        const firebaseConfigPath = path.join(repoRoot, 'src', 'firebase', 'config.ts');
+        if (fs.existsSync(firebaseConfigPath)) {
+          const cfg = fs.readFileSync(firebaseConfigPath, 'utf8');
+          const m = cfg.match(/storageBucket:\s*['"]([^'"]+)['"]/);
+          if (m && m[1]) BUCKET_NAME = m[1];
+        }
+      } catch (e) {
+        // ignore and fallback
+      }
+    }
+
+    if (!BUCKET_NAME) {
+      // Update this if your firebase config uses a different bucket
+      // Use the specified firebasestorage.app bucket by default per user request
+      BUCKET_NAME = 'gs://software-engineering-edc96.firebasestorage.app';
+    }
+
+    // If we read a bucket name like "software-engineering-edc96.appspot.com" from
+    // the firebase client config, normalize it to a gs:// URL so Storage.bucket()
+    // works consistently.
+    if (!BUCKET_NAME.startsWith('gs://') && /^[^/]+\.[^/]+$/.test(BUCKET_NAME)) {
+      BUCKET_NAME = 'gs://' + BUCKET_NAME;
+    }
 
     const storage = new Storage();
     const bucket = storage.bucket(BUCKET_NAME);

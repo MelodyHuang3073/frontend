@@ -44,3 +44,27 @@ You don’t have to ever use `eject`. The curated feature set is suitable for sm
 You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
 To learn React, check out the [React documentation](https://reactjs.org/).
+
+## Setting CORS for Firebase Storage
+
+If you upload files from a local development server (http://localhost:3000) to Firebase Storage, you must set CORS on the actual GCS bucket used by your Firebase project. The bucket name is defined in `src/firebase/config.ts` under `storageBucket`.
+
+Correct gsutil example (PowerShell):
+
+```powershell
+gsutil cors set .\cors.json gs://software-engineering-edc96.appspot.com
+```
+
+Alternatively, this repository includes a convenience script that will read the bucket name from `src/firebase/config.ts` or from the environment variable `BUCKET_NAME`:
+
+```powershell
+# install dependency and run (ensure GOOGLE_APPLICATION_CREDENTIALS is set to a service account key with Storage Admin)
+npm install @google-cloud/storage
+node ./scripts/set-cors.js
+
+# or set a specific bucket explicitly
+$env:BUCKET_NAME = 'software-engineering-edc96.appspot.com'
+node ./scripts/set-cors.js
+```
+
+If you previously set CORS on a bucket named `*.firebasestorage.app`, that is incorrect for Firebase Storage and will not affect uploads. Use the correct `*.appspot.com` bucket name.
