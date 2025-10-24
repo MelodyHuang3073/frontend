@@ -177,7 +177,7 @@ const LeaveApproval: React.FC = () => {
                   </Typography>
                   {selectedLeave.attachments.map((attachment: string, index: number) => (
                     <Typography key={index} variant="body2">
-                      {attachment}
+                      請假證明 {index + 1}: {attachment}
                     </Typography>
                   ))}
                 </>

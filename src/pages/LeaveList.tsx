@@ -369,7 +369,7 @@ const LeaveList: React.FC = () => {
                           <ListItemText
                             primary={
                               <Link href={attachment} target="_blank" rel="noopener noreferrer" underline="hover" sx={{ fontWeight: 600 }}>
-                                檔案 {index + 1}
+                                請假證明 {index + 1}
                               </Link>
                             }
                           />

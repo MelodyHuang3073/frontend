@@ -47,6 +47,7 @@ const LeaveApplication: React.FC = () => {
   const params = new URLSearchParams(location.search);
   const editId = params.get('edit');
   const [isEditMode, setIsEditMode] = useState(false);
+  const [existingAttachments, setExistingAttachments] = useState<string[]>([]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -159,6 +160,10 @@ const LeaveApplication: React.FC = () => {
     }
   };
 
+  const removeExistingAttachment = (index: number) => {
+    setExistingAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
   // Redirect teachers away from the application page
   React.useEffect(() => {
     const checkRole = async () => {
@@ -187,13 +192,27 @@ const LeaveApplication: React.FC = () => {
         const res = await LeaveService.getLeaveById(editId);
         if (res.success && res.data) {
           const d = res.data;
+          const ensureDate = (v: any): Date | null => {
+            if (!v) return null;
+            if (v instanceof Date) return v;
+            if (typeof v.toDate === 'function') return v.toDate();
+            if (v.seconds) return new Date(v.seconds * 1000);
+            try {
+              return new Date(v);
+            } catch (e) {
+              return null;
+            }
+          };
+
           setFormData({
             leaveType: d.type as LeaveType,
-            startDate: d.startDate,
-            endDate: d.endDate,
+            startDate: ensureDate(d.startDate),
+            endDate: ensureDate(d.endDate),
             reason: d.reason,
-            attachments: [] // attachments are URLs; editing attachments would require re-upload - keep empty for now
+            attachments: [] // new uploads (Files) go here; existing attachments (URLs) are shown separately
           });
+          // populate existing attachment URLs so the editor can view them
+          setExistingAttachments(Array.isArray(d.attachments) ? d.attachments : []);
         } else {
           setError(res.error || '無法載入請假紀錄');
         }
@@ -252,6 +271,7 @@ const LeaveApplication: React.FC = () => {
                       setFormData(prev => ({ ...prev, startDate: newValue }));
                     }}
                     disabled={loading}
+                    slotProps={{ textField: { placeholder: '年/月/日', fullWidth: true } }}
                     sx={{ width: '100%' }}
                   />
                 </LocalizationProvider>
@@ -263,6 +283,7 @@ const LeaveApplication: React.FC = () => {
                       setFormData(prev => ({ ...prev, endDate: newValue }));
                     }}
                     disabled={loading}
+                    slotProps={{ textField: { placeholder: '年/月/日', fullWidth: true } }}
                     sx={{ width: '100%' }}
                   />
                 </LocalizationProvider>
@@ -298,6 +319,18 @@ const LeaveApplication: React.FC = () => {
                   支援格式：JPG、PNG、PDF，單檔限制 10MB
                 </Typography>
               </Box>
+              {/* Show existing attachments (URLs) when editing */}
+              {existingAttachments.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>已存在的附件：</Typography>
+                  {existingAttachments.map((url, idx) => (
+                    <Box key={idx} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, marginRight: 12 }}>請假證明 {idx + 1}</a>
+                      <Button size="small" color="error" onClick={() => removeExistingAttachment(idx)}>移除</Button>
+                    </Box>
+                  ))}
+                </Box>
+              )}
               {formData.attachments.length > 0 && (
                 <Box>
                   <Typography variant="subtitle2" gutterBottom>
