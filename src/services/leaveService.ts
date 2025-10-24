@@ -40,6 +40,8 @@ interface CreateLeaveRequest {
   endDate: Date;
   reason: string;
   attachments?: File[];
+  // Selected course for which the student requests leave (single selection)
+  course?: { code: string; teacherUid?: string; teacherName?: string };
 }
 
 export class LeaveService {
@@ -87,8 +89,8 @@ export class LeaveService {
         }
       }
 
-      // Build a clean payload object (only defined, serializable fields)
-  const newLeaveData: Partial<FirestoreLeaveData> = {
+  // Build a clean payload object (only defined, serializable fields)
+  const newLeaveData: Partial<FirestoreLeaveData & { course?: any; assignedTeacherUid?: string }> = {
         userId: user.uid,
         userName: user.displayName || user.email || 'Unknown',
   type: data.type,
@@ -101,6 +103,10 @@ export class LeaveService {
         updatedAt: Timestamp.now()
       };
 
+  if (data.course) {
+    (newLeaveData as any).course = data.course;
+    (newLeaveData as any).assignedTeacherUid = data.course.teacherUid || null;
+  }
 
       // remove undefined fields just in case (use any to avoid TS index errors)
       Object.keys(newLeaveData).forEach(k => {
@@ -220,9 +226,10 @@ export class LeaveService {
 
       let q;
       if (userData.role === 'teacher') {
-        // 教師可以看到所有請假申請
+        // 教師只能看到指派給自己的請假申請（assignedTeacherUid）
         q = query(
           collection(db, 'leaves'),
+          where('assignedTeacherUid', '==', user.uid),
           orderBy('createdAt', 'desc')
         );
       } else {

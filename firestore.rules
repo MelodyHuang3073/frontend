@@ -1,39 +1,63 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 用戶集合的規則
-    match /users/{userId} {
-      // 允許讀取用戶自己的資料
-      allow read: if request.auth != null && (request.auth.uid == userId);
-      
-      // 允許創建新用戶 - 註冊時使用
-      allow create: if request.auth != null 
-        && request.auth.uid == userId
-        && request.resource.data.uid == userId
-        && request.resource.data.email == request.auth.token.email
-        && request.resource.data.role in ['student', 'teacher'];
 
-      // 允許更新自己的資料
-      allow update: if request.auth != null 
+    // users: allow users to read/write their own profile
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null
         && request.auth.uid == userId
         && request.resource.data.uid == userId
-        && request.resource.data.role == resource.data.role;
+        && request.resource.data.role in ['student', 'teacher'];
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId;
     }
 
-    // 請假申請集合的規則
-    match /leaves/{leaveId} {
-      // 允許讀取自己的請假申請，教師可以讀取所有
+    // enrollments: student may read their own enrollments
+    // support docs that use either studentUid or userId as the student identifier
+    match /enrollments/{enrollmentId} {
+      allow read: if request.auth != null && (
+        (resource.data.studentUid != null && resource.data.studentUid == request.auth.uid) ||
+        (resource.data.userId != null && resource.data.userId == request.auth.uid)
+      );
+
+      allow create: if request.auth != null && (
+        (request.resource.data.studentUid != null && request.resource.data.studentUid == request.auth.uid) ||
+        (request.resource.data.userId != null && request.resource.data.userId == request.auth.uid)
+      );
+
+      allow update, delete: if request.auth != null && (
+        (resource.data.studentUid != null && resource.data.studentUid == request.auth.uid) ||
+        (resource.data.userId != null && resource.data.userId == request.auth.uid)
+      );
+    }
+
+    // courses: readable by any authenticated user
+    match /courses/{courseId} {
       allow read: if request.auth != null;
-      
-      // 允許創建請假申請
-      allow create: if request.auth != null;
-        
-      // 允許更新自己的請假申請
-      allow update: if request.auth != null;
-      
-      allow delete: if request.auth != null &&
-  		resource.data.userId == request.auth.uid &&
-  		resource.data.status in ['pending','rejected'];
+      // writes only by teachers
+      allow write: if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+    }
+
+    // leaves: students can create and read their own; assigned teacher can read/update
+    match /leaves/{leaveId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.userId ||
+        (resource.data.assignedTeacherUid != null && request.auth.uid == resource.data.assignedTeacherUid)
+      );
+
+      allow update: if request.auth != null && (
+        // student updating own leave (must not change assignedTeacherUid)
+        (request.auth.uid == resource.data.userId && request.resource.data.assignedTeacherUid == resource.data.assignedTeacherUid) ||
+        // assigned teacher can update (approve/reject)
+        (resource.data.assignedTeacherUid != null && request.auth.uid == resource.data.assignedTeacherUid)
+      );
+
+      allow delete: if false;
     }
   }
 }

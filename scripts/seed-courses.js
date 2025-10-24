@@ -92,6 +92,36 @@ async function main() {
       console.log('Wrote course', c.code, '-> teacher', teacherObj.username);
     }
 
+    // Create student user and enrollments for the five courses
+    const student = {
+      studentId: '114423030',
+      uid: 'U277560RwVPPbgeaU68nTE8X4ga2',
+      username: 'Melody'
+    };
+
+    console.log('Upserting student user document...');
+    await db.collection('users').doc(student.uid).set({
+      uid: student.uid,
+      username: student.username,
+      studentId: student.studentId,
+      role: 'student',
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    console.log('Creating enrollment records for student', student.username);
+    for (const c of courses) {
+      const enrollmentId = `${c.code}_${student.uid}`;
+      await db.collection('enrollments').doc(enrollmentId).set({
+        courseCode: c.code,
+        courseName: c.name,
+        studentUid: student.uid,
+        studentId: student.studentId,
+        studentName: student.username,
+        enrolledAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      console.log(`Enrolled ${student.username} in ${c.code}`);
+    }
+
     console.log('Seeding complete');
     process.exit(0);
   } catch (err) {
