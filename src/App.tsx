@@ -10,6 +10,7 @@ import Dashboard from './pages/Dashboard';
 import LeaveApplication from './pages/LeaveApplication';
 import LeaveList from './pages/LeaveList';
 import LeaveApproval from './pages/LeaveApproval';
+import Profile from './pages/Profile';
 
 // Components
 import Layout from './components/Layout';
@@ -46,6 +47,11 @@ function App() {
               <Route path="leave-application" element={
                 <PrivateRoute>
                   <LeaveApplication />
+                </PrivateRoute>
+              } />
+              <Route path="profile" element={
+                <PrivateRoute>
+                  <Profile />
                 </PrivateRoute>
               } />
               <Route path="leave-list" element={

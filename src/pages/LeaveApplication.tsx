@@ -280,10 +280,13 @@ const LeaveApplication: React.FC = () => {
   };
 
   // if enrollments change, clear previously computed matches so user must re-confirm
+  // but when editing an existing leave we want to keep the prefilled selection,
+  // so don't clear while in edit mode.
   useEffect(() => {
+    if (isEditMode) return;
     setAvailableCourses([]);
     setSelectedCourseCode(null);
-  }, [enrolledCourses]);
+  }, [enrolledCourses, isEditMode]);
 
   const [matching, setMatching] = useState(false);
 
@@ -555,6 +558,33 @@ const fetchEnrollments = async (uid: string) => {
           });
           // populate existing attachment URLs so the editor can view them
           setExistingAttachments(Array.isArray(d.attachments) ? d.attachments : []);
+          // If the loaded leave contains a course, prefill the selected course so the editor
+          // sees the course selected immediately when editing.
+          try {
+            if (d.course) {
+              let leaveCourseCode: string | undefined;
+              let courseObj: any = undefined;
+              if (typeof d.course === 'string') {
+                leaveCourseCode = d.course;
+                courseObj = { code: d.course, name: '', teacherUid: undefined, teacherName: undefined, schedule: undefined };
+              } else if (d.course.code) {
+                leaveCourseCode = d.course.code;
+                courseObj = { code: d.course.code, name: d.course.name || '', teacherUid: d.course.teacherUid, teacherName: d.course.teacherName, schedule: (d.course as any).schedule } as any;
+              }
+
+              if (leaveCourseCode) {
+                setSelectedCourseCode(leaveCourseCode);
+                // ensure the availableCourses dropdown contains this course so it is visible to the user
+                setAvailableCourses(prev => {
+                  const exists = prev.find((p: any) => p.code === leaveCourseCode);
+                  if (exists) return prev;
+                  return courseObj ? [courseObj, ...prev] : prev;
+                });
+              }
+            }
+          } catch (e) {
+            console.warn('prefilling selected course failed', e);
+          }
         } else {
           setError(res.error || '無法載入請假紀錄');
         }
@@ -608,26 +638,26 @@ const fetchEnrollments = async (uid: string) => {
               </FormControl>
               {/* Course selection will appear after the leave time is chosen */}
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
-                <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhTW}>
+                  <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhTW}>
                   <DateTimePicker
                     label="開始時間"
                     value={formData.startDate}
                     onChange={(newValue) => {
                       setFormData(prev => ({ ...prev, startDate: newValue }));
                     }}
-                    disabled={loading}
+                    disabled={loading || isEditMode}
                     slotProps={{ textField: { placeholder: '年/月/日', fullWidth: true } }}
                     sx={{ width: '100%' }}
                   />
                 </LocalizationProvider>
-                <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhTW}>
+                  <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhTW}>
                   <DateTimePicker
                     label="結束時間"
                     value={formData.endDate}
                     onChange={(newValue) => {
                       setFormData(prev => ({ ...prev, endDate: newValue }));
                     }}
-                    disabled={loading}
+                    disabled={loading || isEditMode}
                     slotProps={{ textField: { placeholder: '年/月/日', fullWidth: true } }}
                     sx={{ width: '100%' }}
                   />
@@ -639,61 +669,90 @@ const fetchEnrollments = async (uid: string) => {
                   請先選擇請假時間後，按「確認時段」以列出在該時間內您所修的課程。
                 </Typography>
               ) : (
-                <Box>
-                  <Box sx={{ mb: 1 }}>
-                    <Button
-                      variant="outlined"
-                      onClick={async () => {
-                        console.debug('[LeaveApplication] 確認時段 button clicked', { startDate, endDate, enrolledCount: enrolledCourses.length });
-                        try {
-                          setMatching(true);
-                          const matches = await computeAvailableCourses();
-                          console.debug('[LeaveApplication] computeAvailableCourses returned', matches?.length, matches);
-                          if (!matches || matches.length === 0) {
-                            setError('系統未在您選擇的時間內找到對應的課程。');
-                            // scroll the alert into view so user notices the message
-                            setTimeout(() => {
-                              try { alertRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(e){}
-                            }, 50);
-                          } else {
-                            setError('');
-                          }
-                        } catch (err) {
-                          console.error('computeAvailableCourses failed', err);
-                          setError('比對時發生錯誤，請稍後重試');
-                        } finally {
-                          setMatching(false);
-                        }
-                      }}
-                      disabled={loading || matching}
-                    >
-                      {matching ? <CircularProgress size={16} /> : '確認時段'}
-                    </Button>
+                  <Box>
+                    {isEditMode ? (
+                      (() => {
+                        // show read-only course info when editing
+                        const sc = availableCourses.find(c => c.code === selectedCourseCode) || enrolledCourses.find(c => c.code === selectedCourseCode) || null;
+                        return (
+                          <Box>
+                            <Typography variant="subtitle2" sx={{ mb: 0.5 }}>已選課程</Typography>
+                            <Typography sx={{ fontWeight: 700 }}>
+                              {sc ? (
+                                sc.code + (
+                                  sc.name && sc.name !== sc.code ? '-' + sc.name : (
+                                    sc.teacherName ? '-' + sc.teacherName : ''
+                                  )
+                                )
+                              ) : (selectedCourseCode || '—')}
+                            </Typography>
+                            {sc?.schedule && (
+                              <Typography variant="body2" color="textSecondary">
+                                {typeof sc.schedule === 'string' ? sc.schedule : `${(sc.schedule as any).date} ${(sc.schedule as any).starttime}-${(sc.schedule as any).endtime}`}
+                              </Typography>
+                            )}
+                            <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 1 }}>編輯模式：課程與請假時間不可變更</Typography>
+                          </Box>
+                        );
+                      })()
+                    ) : (
+                      <>
+                        <Box sx={{ mb: 1 }}>
+                          <Button
+                            variant="outlined"
+                            onClick={async () => {
+                              console.debug('[LeaveApplication] 確認時段 button clicked', { startDate, endDate, enrolledCount: enrolledCourses.length });
+                              try {
+                                setMatching(true);
+                                const matches = await computeAvailableCourses();
+                                console.debug('[LeaveApplication] computeAvailableCourses returned', matches?.length, matches);
+                                if (!matches || matches.length === 0) {
+                                  setError('系統未在您選擇的時間內找到對應的課程。');
+                                  // scroll the alert into view so user notices the message
+                                  setTimeout(() => {
+                                    try { alertRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(e){}
+                                  }, 50);
+                                } else {
+                                  setError('');
+                                }
+                              } catch (err) {
+                                console.error('computeAvailableCourses failed', err);
+                                setError('比對時發生錯誤，請稍後重試');
+                              } finally {
+                                setMatching(false);
+                              }
+                            }}
+                            disabled={loading || matching}
+                          >
+                            {matching ? <CircularProgress size={16} /> : '確認時段'}
+                          </Button>
+                        </Box>
+                        {availableCourses.length === 0 ? (
+                          <Typography variant="caption" color="textSecondary">
+                            在您按下確認後，若仍未找到任何已選課程，請確認時間或聯絡管理員。
+                          </Typography>
+                        ) : (
+                          <FormControl fullWidth required>
+                            <InputLabel id="course-select-label">選擇課程</InputLabel>
+                            <Select
+                              labelId="course-select-label"
+                              id="courseSelect"
+                              value={selectedCourseCode || ''}
+                              label="選擇課程"
+                              onChange={(e) => setSelectedCourseCode(e.target.value as string)}
+                              disabled={loading || isEditMode}
+                            >
+                              {availableCourses.map((c) => (
+                                <MenuItem key={c.code} value={c.code}>
+                                  {c.code + (c.teacherName ? ' - ' + c.teacherName : (c.name && c.name !== c.code ? ' - ' + c.name : ''))} {c.schedule ? `(${c.schedule})` : ''}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        )}
+                      </>
+                    )}
                   </Box>
-                  {availableCourses.length === 0 ? (
-                    <Typography variant="caption" color="textSecondary">
-                      在您按下確認後，若仍未找到任何已選課程，請確認時間或聯絡管理員。
-                    </Typography>
-                  ) : (
-                    <FormControl fullWidth required>
-                      <InputLabel id="course-select-label">選擇課程</InputLabel>
-                      <Select
-                        labelId="course-select-label"
-                        id="courseSelect"
-                        value={selectedCourseCode || ''}
-                        label="選擇課程"
-                        onChange={(e) => setSelectedCourseCode(e.target.value as string)}
-                        disabled={loading}
-                      >
-                        {availableCourses.map((c) => (
-                          <MenuItem key={c.code} value={c.code}>
-                            {c.code} — {c.name} {c.teacherName ? `（授課：${c.teacherName}）` : ''} {c.schedule ? `(${c.schedule})` : ''}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  )}
-                </Box>
               )}
               <TextField
                 required

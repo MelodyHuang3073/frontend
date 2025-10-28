@@ -31,6 +31,7 @@ const drawerWidth = 240;
 const Layout: React.FC = () => {
   const navigate = useNavigate();
   interface UserInfo {
+    username?: string | null;
     displayName: string | null;
     email: string | null;
     role?: string;
@@ -41,6 +42,10 @@ const Layout: React.FC = () => {
   // menu items will be generated based on user role
   const getMenuItems = (role?: string) => {
     const items: { text: string; icon: React.ReactElement; path: string }[] = [];
+    // Always show homepage first
+    items.push({ text: '首頁', icon: <AssignmentIcon />, path: '/' });
+    // Profile page
+    items.push({ text: '個人資訊', icon: <ExitToAppIcon />, path: '/profile' });
     // Make leave application the system homepage for students
     if (role !== 'teacher') {
       items.push({ text: '申請請假', icon: <AssignmentIcon />, path: '/leave-application' });
@@ -59,6 +64,7 @@ const Layout: React.FC = () => {
           
           if (userData) {
             setUserInfo({
+              username: userData.username || user.displayName || user.email || null,
               displayName: user.displayName,
               email: user.email,
               role: userData.role
@@ -148,13 +154,13 @@ const Layout: React.FC = () => {
                 <ListItem>
                   <ListItemIcon>
                     <Avatar sx={{ bgcolor: 'primary.main' }}>
-                      {userInfo.displayName?.[0] || userInfo.email?.[0] || '?'}
+                      {userInfo.username?.[0] || userInfo.displayName?.[0] || userInfo.email?.[0] || '?'}
                     </Avatar>
                   </ListItemIcon>
-                  <ListItemText 
-                    primary={userInfo.displayName || userInfo.email}
-                    secondary={`身份：${userInfo.role === 'student' ? '學生' : '教師'}`}
-                  />
+                    <ListItemText 
+                      primary={userInfo.username || userInfo.displayName || userInfo.email}
+                      secondary={`身份：${userInfo.role === 'student' ? '學生' : '教師'}`}
+                    />
                 </ListItem>
               </Box>
             </>

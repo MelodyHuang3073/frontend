@@ -185,6 +185,20 @@ const LeaveList: React.FC = () => {
     }
   };
 
+  const formatTs = (v: any) => {
+    if (!v) return '—';
+    try {
+      // Firestore Timestamp has toDate()
+      if (typeof v.toDate === 'function') v = v.toDate();
+      // Some objects may have seconds
+      if (v && typeof v.seconds === 'number') v = new Date(v.seconds * 1000);
+      if (!(v instanceof Date)) v = new Date(v);
+      return format(v, 'yyyy/MM/dd HH:mm', { locale: zhTW });
+    } catch (e) {
+      return '—';
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h5" gutterBottom>
@@ -202,21 +216,21 @@ const LeaveList: React.FC = () => {
           <CircularProgress />
         </Box>
       ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>假別</TableCell>
-                <TableCell>課程</TableCell>
-                {role === 'teacher' && <TableCell>申請人</TableCell>}
-                {role === 'teacher' && <TableCell>提交時間</TableCell>}
-                <TableCell>開始時間</TableCell>
-                <TableCell>結束時間</TableCell>
-                <TableCell>狀態</TableCell>
-                <TableCell>操作</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
+        <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+    <Table sx={{ minWidth: 1100, tableLayout: 'fixed' }}>
+      <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ width: '8%' }}>假別</TableCell>
+                    <TableCell sx={{ width: '13%' }}>課程</TableCell>
+                    <TableCell sx={{ width: '10%' }}>申請人</TableCell>
+                    <TableCell sx={{ width: '14%' }}>提交時間</TableCell>
+                    <TableCell sx={{ width: '14%' }}>開始時間</TableCell>
+                    <TableCell sx={{ width: '14%' }}>結束時間</TableCell>
+                    <TableCell sx={{ width: '8%' }}>狀態</TableCell>
+                    <TableCell sx={{ width: '18%' }}>操作</TableCell>
+                  </TableRow>
+                </TableHead>
+              <TableBody>
               {leaves
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((leave) => (
@@ -236,19 +250,15 @@ const LeaveList: React.FC = () => {
                           )
                         ) : '—'}
                       </TableCell>
-                    {role === 'teacher' && (
-                      <TableCell>
-                        {leave.userName}
-                        {leave.studentId && (
-                          <div style={{ fontSize: 12, color: '#666' }}>{leave.studentId}</div>
-                        )}
-                      </TableCell>
-                    )}
-                    {role === 'teacher' && (
-                      <TableCell>
-                        {leave.createdAt ? format(leave.createdAt, 'yyyy/MM/dd HH:mm', { locale: zhTW }) : '—'}
-                      </TableCell>
-                    )}
+                    <TableCell sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {leave.userName}
+                      {leave.studentId && (
+                        <div style={{ fontSize: 12, color: '#666' }}>{leave.studentId}</div>
+                      )}
+                    </TableCell>
+                    <TableCell sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {formatTs(leave.createdAt)}
+                    </TableCell>
                     <TableCell>
                        {leave.startDate ? format(leave.startDate, 'yyyy/MM/dd HH:mm', { locale: zhTW }) : '—'}
                     </TableCell>
@@ -346,7 +356,7 @@ const LeaveList: React.FC = () => {
                 ))}
               {!loading && leaves.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={role === 'teacher' ? 8 : 6} align="center">
+                  <TableCell colSpan={8} align="center">
                     尚無請假紀錄
                   </TableCell>
                 </TableRow>
@@ -418,7 +428,11 @@ const LeaveList: React.FC = () => {
                     <Typography sx={{ fontWeight: 700, mb: 0.5 }}>課程</Typography>
                     <Typography sx={{ fontSize: '1rem' }}>
                       {selectedLeave.course ? (
-                        typeof selectedLeave.course === 'string' ? selectedLeave.course : (selectedLeave.course.name || selectedLeave.course.code || '—')
+                        typeof selectedLeave.course === 'string' ? selectedLeave.course : (
+                          selectedLeave.course?.code ?
+                            (selectedLeave.course.code + (selectedLeave.course.teacherName ? '-' + selectedLeave.course.teacherName : (selectedLeave.course.name && selectedLeave.course.name !== selectedLeave.course.code ? '-' + selectedLeave.course.name : ''))) :
+                            (selectedLeave.course?.name || '—')
+                        )
                       ) : '—'}
                     </Typography>
                     {selectedLeave.course && typeof selectedLeave.course !== 'string' && selectedLeave.course.teacherName && (
@@ -426,16 +440,16 @@ const LeaveList: React.FC = () => {
                     )}
                   </Box>
                   <Box>
-                    <Typography sx={{ fontWeight: 700, mb: 0.5 }}>提交時間</Typography>
-                    <Typography sx={{ fontSize: '1rem' }}>{selectedLeave.createdAt ? format(selectedLeave.createdAt, 'yyyy/MM/dd HH:mm', { locale: zhTW }) : '—'}</Typography>
+                    <Typography sx={{ fontWeight: 700, mb: 0.5 }}>結束時間</Typography>
+                    <Typography sx={{ fontSize: '1rem' }}>{selectedLeave.endDate ? format(selectedLeave.endDate, 'yyyy/MM/dd HH:mm', { locale: zhTW }) : '—'}</Typography>
                   </Box>
                   <Box>
                     <Typography sx={{ fontWeight: 700, mb: 0.5 }}>開始時間</Typography>
                     <Typography sx={{ fontSize: '1rem' }}>{selectedLeave.startDate ? format(selectedLeave.startDate, 'yyyy/MM/dd HH:mm', { locale: zhTW }) : '—'}</Typography>
                   </Box>
                   <Box>
-                    <Typography sx={{ fontWeight: 700, mb: 0.5 }}>結束時間</Typography>
-                    <Typography sx={{ fontSize: '1rem' }}>{selectedLeave.endDate ? format(selectedLeave.endDate, 'yyyy/MM/dd HH:mm', { locale: zhTW }) : '—'}</Typography>
+                    <Typography sx={{ fontWeight: 700, mb: 0.5 }}>提交時間</Typography>
+                    <Typography sx={{ fontSize: '1rem' }}>{selectedLeave.createdAt ? format(selectedLeave.createdAt, 'yyyy/MM/dd HH:mm', { locale: zhTW }) : '—'}</Typography>
                   </Box>
                 </Box>
 
