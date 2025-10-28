@@ -19,6 +19,7 @@ import {
   Assignment as AssignmentIcon,
   List as ListIcon,
   ExitToApp as ExitToAppIcon,
+  // School icon removed because "我的選課紀錄" menu was removed
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../../firebase';

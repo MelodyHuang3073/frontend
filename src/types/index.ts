@@ -71,28 +71,8 @@ export interface LeaveApplication {
   reviewComment?: string;
   department?: string;
   studentId?: string;
-  course?: string;
-}
-
-// 前端使用的請假申請資料結構
-export interface LeaveApplication {
-  id: string;
-  userId: string;
-  userName: string;
-  type: LeaveType;
-  startDate: Date;
-  endDate: Date;
-  reason: string;
-  status: LeaveStatus;
-  attachments: string[];
-  createdAt: Date;
-  updatedAt: Date;
-  reviewedBy?: string;
-  reviewedAt?: Date | null;
-  reviewComment?: string;
-  department?: string;
-  studentId?: string;
-  course?: string;
+  // course can be a string code or an object with more metadata
+  course?: string | { code?: string; name?: string; teacherUid?: string; teacherName?: string };
 }
 
 // 課程類型定義

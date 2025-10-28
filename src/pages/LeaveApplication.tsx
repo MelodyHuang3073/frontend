@@ -62,9 +62,16 @@ const LeaveApplication: React.FC = () => {
   const editId = params.get('edit');
   const [isEditMode, setIsEditMode] = useState(false);
   const [existingAttachments, setExistingAttachments] = useState<string[]>([]);
-  const [enrolledCourses, setEnrolledCourses] = useState<Array<{ code: string; name: string; teacherUid?: string; teacherName?: string; schedule?: string }>>([]);
+  const [enrolledCourses, setEnrolledCourses] = useState<
+    Array<{
+      code: string;
+      name: string;
+      teacherUid?: string;
+      teacherName?: string;
+      schedule?: string | { date: string; starttime: string; endtime: string };
+    }>
+  >([]);
   const [selectedCourseCode, setSelectedCourseCode] = useState<string | null>(null);
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -111,10 +118,30 @@ const LeaveApplication: React.FC = () => {
   const [availableCourses, setAvailableCourses] = useState<typeof enrolledCourses>([]);
 
   // Helpers to parse schedule like 'Mon 09:00-10:30'
-  const parseSchedule = React.useCallback((s?: string) => {
+  const parseSchedule = React.useCallback((s?: any) => {
+    console.debug('[LeaveApplication] parseSchedule input:', s);
     if (!s) return null;
     try {
-      // expecting formats like 'Mon 09:00-10:30'
+      if (typeof s === 'object') {
+        // Firestore: { date: 'Mon', starttime: '9:00', endtime: '10:30' }
+        const wd = s.date || s.day || '';
+        const startStr = s.starttime || s.startTime;
+        const endStr = s.endtime || s.endTime;
+        const toMinutes = (t?: string) => {
+          if (!t) return null;
+          const [hh, mm] = t.split(':').map(Number);
+          return hh * 60 + mm;
+        };
+        const out = {
+          weekday: WEEKDAY_MAP[wd] ?? null,
+          startMin: toMinutes(startStr),
+          endMin: toMinutes(endStr)
+        };
+        console.debug('[LeaveApplication] parseSchedule output (object):', out);
+        return out;
+      }
+
+      // fallback: string format like 'Mon 09:00-10:30'
       const parts = s.split(' ');
       const wd = parts[0];
       const times = parts[1] || '';
@@ -124,12 +151,15 @@ const LeaveApplication: React.FC = () => {
         const [hh, mm] = t.split(':').map(x => parseInt(x, 10));
         return hh * 60 + mm;
       };
-      return {
+      const out = {
         weekday: WEEKDAY_MAP[wd] ?? null,
         startMin: toMinutes(startStr),
         endMin: toMinutes(endStr)
       };
+      console.debug('[LeaveApplication] parseSchedule output (fallback):', out);
+      return out;
     } catch (err) {
+      console.warn('parseSchedule failed for', s, err);
       return null;
     }
   }, []);
@@ -138,56 +168,115 @@ const LeaveApplication: React.FC = () => {
 
   const minutesOfDay = (d: Date) => d.getHours() * 60 + d.getMinutes();
 
+  // Given a course schedule (string or object) and the selected start/end range,
+  // return concrete Date objects for the class start and end that fall within the range.
+  const getCourseDateRange = (schedule: any, rangeStart: Date, rangeEnd: Date): { classStart: Date; classEnd: Date } | null => {
+    if (!schedule || !rangeStart || !rangeEnd) return null;
+    const parsed = parseSchedule(schedule);
+    if (!parsed || parsed.weekday === null || parsed.startMin == null || parsed.endMin == null) return null;
+
+    // find the first date in the range that matches the weekday
+    for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
+      const cur = new Date(d);
+      if (cur.getDay() !== parsed.weekday) continue;
+      // build start/end Date using that date but with class times
+      const classStart = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate(), Math.floor(parsed.startMin / 60), parsed.startMin % 60, 0, 0);
+      const classEnd = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate(), Math.floor(parsed.endMin / 60), parsed.endMin % 60, 0, 0);
+      return { classStart, classEnd };
+    }
+    return null;
+  };
+
   // Compute available courses for the selected time range when user confirms
-  const computeAvailableCourses = () => {
-    setError('');
-    // defensive: ensure dates are proper
-    if (!startDate || !endDate) {
-      setAvailableCourses([]);
-      setError('請先選擇開始與結束時間');
-      return [] as any;
-    }
-
-    console.debug('[LeaveApplication] computeAvailableCourses, auth uid=', auth.currentUser?.uid, 'enrolledCourses=', enrolledCourses);
-
-    const matches: typeof enrolledCourses = [];
-
-    // iterate through each calendar day in the range (inclusive)
-    const days: Date[] = [];
-    const s = new Date(startDate);
-    const e = new Date(endDate);
-    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-      days.push(new Date(d));
-    }
-
-    for (const c of enrolledCourses) {
-      if (!c.schedule) continue;
-      const parsed = parseSchedule(c.schedule);
-      console.debug('[LeaveApplication] parsed schedule for', c.code, parsed);
-      if (!parsed || parsed.weekday === null) continue;
-
-      // check each day in the selected range for weekday match and time overlap
-      let matched = false;
-      for (const day of days) {
-        if (day.getDay() !== parsed.weekday) continue;
-        const leaveStartMin = minutesOfDay(new Date(startDate));
-        const leaveEndMin = minutesOfDay(new Date(endDate));
-        const classStart = parsed.startMin ?? 0;
-        const classEnd = parsed.endMin ?? 24 * 60;
-        // overlap: leaveStart <= classEnd && leaveEnd >= classStart
-        if (leaveStartMin <= classEnd && leaveEndMin >= classStart) {
-          matched = true;
-          break;
-        }
+  const computeAvailableCourses = async () => {
+    setMatching(true);
+    try {
+      setError('');
+      // defensive: ensure dates are proper
+      if (!startDate || !endDate) {
+        setAvailableCourses([]);
+        setError('請先選擇開始與結束時間');
+        return [] as any;
       }
 
-      if (matched) matches.push(c);
-    }
+      console.debug('[LeaveApplication] computeAvailableCourses, auth uid=', auth.currentUser?.uid, 'enrolledCourses=', enrolledCourses.length);
 
-    setAvailableCourses(matches);
-    console.debug('[LeaveApplication] matched courses=', matches.map(m => m.code));
-    if (matches.length === 1) setSelectedCourseCode(matches[0].code);
-    return matches;
+      // If enrollments not yet loaded, try fetching now (ensure DB read happens when button clicked)
+      let coursesToCheck = enrolledCourses;
+      if ((!enrolledCourses || enrolledCourses.length === 0) && auth.currentUser) {
+        console.debug('[LeaveApplication] enrolledCourses empty — fetching from Firestore now');
+        const fresh = await fetchEnrollments(auth.currentUser.uid);
+        coursesToCheck = fresh && fresh.length ? fresh : enrolledCourses;
+      }
+
+      const matches: typeof enrolledCourses = [];
+
+      // iterate through each calendar day in the range (inclusive)
+      const days: Date[] = [];
+      const s = new Date(startDate);
+      const e = new Date(endDate);
+      for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+        days.push(new Date(d));
+      }
+      console.debug('[LeaveApplication] expanded days for range:', days.map(dd => dd.toDateString()));
+
+      console.debug('[LeaveApplication] coursesToCheck (summary):', coursesToCheck.map(x => ({ code: x.code, schedule: x.schedule })));
+
+      for (const c of coursesToCheck) {
+        if (!c.schedule) {
+          console.debug('[LeaveApplication] skipping course (no schedule):', c.code, c);
+          continue;
+        }
+        const parsed = parseSchedule(c.schedule);
+        console.debug('[LeaveApplication] parsed schedule for', c.code, parsed);
+        if (!parsed || parsed.weekday === null) {
+          console.debug('[LeaveApplication] parsed schedule invalid or missing weekday for', c.code);
+          continue;
+        }
+
+        // check each day in the selected range for weekday match and time overlap
+        let matched = false;
+        for (const day of days) {
+          if (day.getDay() !== parsed.weekday) continue;
+
+          // 當日請假起訖時間
+          let leaveStartMin = 0;
+          let leaveEndMin = 24 * 60;
+
+          if (day.toDateString() === new Date(startDate).toDateString()) {
+            leaveStartMin = minutesOfDay(new Date(startDate));
+          }
+          if (day.toDateString() === new Date(endDate).toDateString()) {
+            leaveEndMin = minutesOfDay(new Date(endDate));
+          }
+
+          const classStart = parsed.startMin ?? 0;
+          const classEnd = parsed.endMin ?? 24 * 60;
+          // overlap: leaveStart <= classEnd && leaveEnd >= classStart
+          if (leaveStartMin <= classEnd && leaveEndMin >= classStart) {
+            matched = true;
+            break;
+          }
+        }
+
+        if (matched) matches.push(c);
+      }
+
+      setAvailableCourses(matches);
+      console.debug('[LeaveApplication] matched courses=', matches.map(m => m.code));
+      if (matches.length === 1) setSelectedCourseCode(matches[0].code);
+      if (matches.length === 0) {
+        // Provide helpful context so admin/user can see what enrollments exist and why no match
+        const enrolledInfo = coursesToCheck.map(c => `${c.code}${c.schedule ? ` (${c.schedule})` : ''}`).join(', ');
+        const msg = enrolledInfo
+          ? `系統未在您選擇的時間內找到對應的課程。您目前註冊的課程：${enrolledInfo}。請確認課程代碼或排程是否正確。`
+          : '系統未在您選擇的時間內找到對應的課程。請確認時間或聯絡管理員。';
+        setError(msg);
+      }
+      return matches;
+    } finally {
+      setMatching(false);
+    }
   };
 
   // if enrollments change, clear previously computed matches so user must re-confirm
@@ -198,68 +287,114 @@ const LeaveApplication: React.FC = () => {
 
   const [matching, setMatching] = useState(false);
 
-  
+  // fetch enrollments helper (used by auth listener and on-demand)
+  // fetch enrollments helper (used by auth listener and on-demand)
+const fetchEnrollments = async (uid: string) => {
+  try {
+    console.debug('[LeaveApplication] fetchEnrollments for uid=', uid);
 
-  // load enrollments for current student and resolve course + teacher info
-  useEffect(() => {
-    const loadEnrollments = async (uid: string) => {
+    let snap = await getDocs(query(collection(db, 'enrollments'), where('studentUid', '==', uid)));
+    if (snap.empty) {
+      console.debug('[LeaveApplication] no enrollments under studentUid, trying userId');
+      snap = await getDocs(query(collection(db, 'enrollments'), where('userId', '==', uid)));
+    }
+
+    console.debug('[LeaveApplication] enrollments query snapshot size=', snap.size);
+    const items = await Promise.all(snap.docs.map(async (d) => {
+      const data: any = d.data();
+      console.debug('[LeaveApplication] enrollment raw doc:', data);
+      const code = data.courseCode;
+      let courseName = data.courseName || '';
+      let teacherUid: string | undefined;
+      let teacherName: string | undefined;
+  let schedule: any = data.schedule || undefined;
+
+      let c: any = undefined;
       try {
-        console.debug('[LeaveApplication] loading enrollments for uid=', uid);
-        // try common field names: studentUid first, fallback to userId
-        let snap = await getDocs(query(collection(db, 'enrollments'), where('studentUid', '==', uid)));
-        if (snap.empty) {
-          console.debug('[LeaveApplication] no enrollments under studentUid, trying userId');
-          snap = await getDocs(query(collection(db, 'enrollments'), where('userId', '==', uid)));
-        }
-        console.debug('[LeaveApplication] enrollments query snapshot size=', snap.size);
-        console.debug('[LeaveApplication] enrollments docs', snap.docs.map(d => d.data()));
-        const items = await Promise.all(snap.docs.map(async (d) => {
-          const data: any = d.data();
-          const code = data.courseCode;
-          let courseName = data.courseName || '';
-          let teacherUid: string | undefined;
-          let teacherName: string | undefined;
-          let schedule: string | undefined = data.schedule || undefined;
-          try {
-            const courseRef = doc(db, 'courses', code);
-            const courseSnap = await getDoc(courseRef);
-            if (courseSnap.exists()) {
-              const c = courseSnap.data() as any;
-              courseName = courseName || c.name;
-              // prefer schedule from enrollment doc, fall back to course doc
-              schedule = schedule || c.schedule || undefined;
-              if (c.teacher) {
-                teacherUid = c.teacher.uid;
-                teacherName = c.teacher.username || c.teacher.name;
-              }
-            }
-          } catch (err) {
-            console.warn('Failed to load course', code, err);
+        // course 表名為 "course"
+        const courseRef = doc(db, 'course', code);
+        const courseSnap = await getDoc(courseRef);
+        if (courseSnap.exists()) {
+          c = courseSnap.data();
+        } else {
+          // 如果找不到，就用 where 查欄位
+          const q = query(collection(db, 'course'), where('code', '==', code));
+          const qSnap = await getDocs(q);
+          if (!qSnap.empty) {
+            c = qSnap.docs[0].data();
+          } else {
+            console.warn(`[LeaveApplication] course not found: ${code}`);
           }
-
-          return {
-            code,
-            name: courseName,
-            teacherUid,
-            teacherName,
-            schedule
-          };
-        }));
-
-        setEnrolledCourses(items);
-        if (items.length === 1) setSelectedCourseCode(items[0].code);
-      } catch (err: any) {
-        console.error('載入選課資料失敗', err, err?.code, err?.message);
-        // surface a friendly message for permission errors
-        if (err?.code === 'permission-denied' || /permission/i.test(err?.message || '')) {
-          setError('讀取選課資料時權限不足，請確認是否已登入或 Firestore 規則允許讀取。');
         }
+      } catch (err) {
+        console.error(`Failed to load course ${code}`, err);
       }
-    };
 
+      // If we found a course doc, prefer its values for display and scheduling
+      if (c) {
+        console.debug('[LeaveApplication] found course doc for', code, c);
+        courseName = courseName || c.name || c.courseName || courseName;
+
+        // course may reference the teacher by a user id field (userId, teacherUid, etc.)
+        const courseTeacherUid = c.userId || c.userUid || c.teacherUid || c.teacherId;
+        teacherUid = teacherUid || courseTeacherUid;
+
+        // try to get teacherName from the course doc first
+        teacherName = teacherName || c.teacherName || c.instructor || teacherName;
+
+        // if teacherName still missing but we have a user id, fetch users/{userId}.username
+        if (!teacherName && courseTeacherUid) {
+          try {
+            const userRef = doc(db, 'users', courseTeacherUid);
+            const userSnap = await getDoc(userRef);
+            if (userSnap.exists()) {
+              const ud: any = userSnap.data();
+              teacherName = ud.username || ud.displayName || ud.name || teacherName;
+              console.debug('[LeaveApplication] resolved teacherName from users doc', courseTeacherUid, teacherName);
+            } else {
+              console.debug('[LeaveApplication] users doc not found for', courseTeacherUid);
+            }
+          } catch (err: any) {
+            // If Firestore rules prevent reading the `users` doc, treat as non-fatal and continue.
+            if (err?.code === 'permission-denied' || /permission/i.test(err?.message || '')) {
+              console.debug('[LeaveApplication] no permission to read users doc for', courseTeacherUid, '- skipping teacher username resolution');
+            } else {
+              console.error('[LeaveApplication] failed to load user for teacher uid', courseTeacherUid, err);
+            }
+          }
+        }
+
+        schedule = schedule || c.schedule || c.time || c.timeslot || schedule;
+      }
+
+      const merged = {
+        code,
+        name: courseName,
+        teacherUid,
+        teacherName,
+        schedule
+      };
+      console.debug('[LeaveApplication] enrollment merged item:', merged);
+      return merged;
+    }));
+
+    setEnrolledCourses(items);
+    if (items.length === 1) setSelectedCourseCode(items[0].code);
+    return items;
+  } catch (err: any) {
+    console.error('載入選課資料失敗', err);
+    if (err?.code === 'permission-denied' || /permission/i.test(err?.message || '')) {
+      setError('讀取選課資料時權限不足，請確認是否已登入或 Firestore 規則允許讀取。');
+    }
+    return [] as any;
+  }
+};
+
+  // wire auth listener to load enrollments when a user becomes available
+  useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
       if (user) {
-        loadEnrollments(user.uid);
+        void fetchEnrollments(user.uid);
       } else {
         // not signed in yet - clear enrollments
         setEnrolledCourses([]);
@@ -302,27 +437,48 @@ const LeaveApplication: React.FC = () => {
 
     try {
       let response;
+      // determine selected course (from available matches first, then enrolled list)
+      const selectedCourse = availableCourses.find(c => c.code === selectedCourseCode) || enrolledCourses.find(c => c.code === selectedCourseCode) || null;
+
+      // If a course is selected and has schedule info, compute concrete class start/end within the selected range
+      let useStartDate: Date | null = formData.startDate;
+      let useEndDate: Date | null = formData.endDate;
+      if (selectedCourse && formData.startDate && formData.endDate) {
+        const classRange = getCourseDateRange(selectedCourse.schedule, formData.startDate, formData.endDate);
+        if (classRange) {
+          useStartDate = classRange.classStart;
+          useEndDate = classRange.classEnd;
+          console.debug('[LeaveApplication] overriding leave start/end with course times', useStartDate, useEndDate);
+        }
+      }
+
       if (isEditMode && editId) {
         // if editing, use updateLeave; if it was rejected, student can resubmit by setting status to 'pending'
         response = await LeaveService.updateLeave(editId, {
           type: formData.leaveType,
-          startDate: formData.startDate!,
-          endDate: formData.endDate!,
+          startDate: useStartDate!,
+          endDate: useEndDate!,
           reason: formData.reason,
           attachments: formData.attachments,
           status: 'pending',
           reviewComment: undefined
         });
       } else {
-        // find selected course object
-  const selectedCourse = availableCourses.find(c => c.code === selectedCourseCode) || enrolledCourses.find(c => c.code === selectedCourseCode) || null;
+        // Build course payload but omit any undefined fields to avoid Firestore addDoc() invalid data errors
+        let coursePayload: { code: string; teacherUid?: string; teacherName?: string } | undefined = undefined;
+        if (selectedCourse) {
+          coursePayload = { code: selectedCourse.code };
+          if (selectedCourse.teacherUid) coursePayload.teacherUid = selectedCourse.teacherUid;
+          if (selectedCourse.teacherName) coursePayload.teacherName = selectedCourse.teacherName;
+        }
+
         response = await LeaveService.createLeave({
           type: formData.leaveType,
-          startDate: formData.startDate!,
-          endDate: formData.endDate!,
+          startDate: useStartDate!,
+          endDate: useEndDate!,
           reason: formData.reason,
           attachments: formData.attachments,
-          course: selectedCourse ? { code: selectedCourse.code, teacherUid: selectedCourse.teacherUid, teacherName: selectedCourse.teacherName } : undefined
+          course: coursePayload
         });
       }
 
@@ -531,7 +687,7 @@ const LeaveApplication: React.FC = () => {
                       >
                         {availableCourses.map((c) => (
                           <MenuItem key={c.code} value={c.code}>
-                            {c.code} — {c.name} {c.schedule ? `(${c.schedule})` : ''}
+                            {c.code} — {c.name} {c.teacherName ? `（授課：${c.teacherName}）` : ''} {c.schedule ? `(${c.schedule})` : ''}
                           </MenuItem>
                         ))}
                       </Select>

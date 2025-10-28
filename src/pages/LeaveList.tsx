@@ -35,6 +35,8 @@ import { format } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 import { LeaveService } from '../services/leaveService';
 import { LeaveApplication } from '../types';
+import { db } from '../firebase';
+import { doc, getDoc, query, where, getDocs, collection } from 'firebase/firestore';
 
 const LeaveList: React.FC = () => {
   const [page, setPage] = useState(0);
@@ -62,6 +64,62 @@ const LeaveList: React.FC = () => {
         if (response.success && response.data) {
           setLeaves(response.data);
           console.log('取得請假紀錄:', response.data); // debug log
+
+          // Resolve course metadata (name, teacherName) for leaves that only have course code
+          try {
+            const codesToResolve = new Set<string>();
+            response.data.forEach(l => {
+              if (!l.course) return;
+              if (typeof l.course === 'string') {
+                codesToResolve.add(l.course);
+              } else if (l.course.code && !l.course.name) {
+                codesToResolve.add(l.course.code);
+              }
+            });
+
+            if (codesToResolve.size > 0) {
+              const codeArray = Array.from(codesToResolve);
+              const metaMap: Record<string, any> = {};
+              for (const code of codeArray) {
+                try {
+                  let metaSnap = await getDoc(doc(db, 'course', code));
+                  let meta: any = null;
+                  if (metaSnap.exists()) {
+                    meta = metaSnap.data();
+                  } else {
+                    const q = query(collection(db, 'course'), where('code', '==', code));
+                    const qSnap = await getDocs(q);
+                    if (!qSnap.empty) meta = qSnap.docs[0].data();
+                  }
+                  if (meta) {
+                    metaMap[code] = meta;
+                  }
+                } catch (e) {
+                  console.warn('failed to resolve course meta for', code, e);
+                }
+              }
+
+              if (Object.keys(metaMap).length > 0) {
+                const merged = response.data.map(l => {
+                  if (!l.course) return l;
+                  if (typeof l.course === 'string') {
+                    const meta = metaMap[l.course];
+                    if (meta) return { ...l, course: { code: l.course, name: meta.name || meta.courseName, teacherName: meta.teacherName || meta.instructor } };
+                    return l;
+                  }
+                  if (l.course.code) {
+                    const meta = metaMap[l.course.code];
+                    if (meta) return { ...l, course: { ...l.course, name: l.course.name || meta.name || meta.courseName, teacherName: l.course.teacherName || meta.teacherName || meta.instructor } };
+                  }
+                  return l;
+                });
+                setLeaves(merged);
+              }
+            }
+          } catch (e) {
+            console.warn('course metadata resolution failed', e);
+          }
+
         } else {
           setError(response.error || '無法獲取請假記錄');
         }
@@ -149,6 +207,7 @@ const LeaveList: React.FC = () => {
             <TableHead>
               <TableRow>
                 <TableCell>假別</TableCell>
+                <TableCell>課程</TableCell>
                 {role === 'teacher' && <TableCell>申請人</TableCell>}
                 {role === 'teacher' && <TableCell>提交時間</TableCell>}
                 <TableCell>開始時間</TableCell>
@@ -163,6 +222,20 @@ const LeaveList: React.FC = () => {
                 .map((leave) => (
                   <TableRow key={leave.id}>
                     <TableCell>{getLeaveTypeText(leave.type)}</TableCell>
+                      <TableCell>
+                        {leave.course ? (
+                          typeof leave.course === 'string' ? (
+                            leave.course
+                          ) : (
+                            <div>
+                              <div>{leave.course.name || leave.course.code || '—'}</div>
+                              {leave.course.teacherName && (
+                                <div style={{ fontSize: 12, color: '#666' }}>{leave.course.teacherName}</div>
+                              )}
+                            </div>
+                          )
+                        ) : '—'}
+                      </TableCell>
                     {role === 'teacher' && (
                       <TableCell>
                         {leave.userName}
@@ -273,7 +346,7 @@ const LeaveList: React.FC = () => {
                 ))}
               {!loading && leaves.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={role === 'teacher' ? 7 : 5} align="center">
+                  <TableCell colSpan={role === 'teacher' ? 8 : 6} align="center">
                     尚無請假紀錄
                   </TableCell>
                 </TableRow>
@@ -340,6 +413,17 @@ const LeaveList: React.FC = () => {
                   <Box>
                     <Typography sx={{ fontWeight: 700, mb: 0.5 }}>假別</Typography>
                     <Typography sx={{ fontSize: '1rem' }}>{getLeaveTypeText(selectedLeave.type)}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontWeight: 700, mb: 0.5 }}>課程</Typography>
+                    <Typography sx={{ fontSize: '1rem' }}>
+                      {selectedLeave.course ? (
+                        typeof selectedLeave.course === 'string' ? selectedLeave.course : (selectedLeave.course.name || selectedLeave.course.code || '—')
+                      ) : '—'}
+                    </Typography>
+                    {selectedLeave.course && typeof selectedLeave.course !== 'string' && selectedLeave.course.teacherName && (
+                      <Typography variant="body2" color="text.secondary">授課老師：{selectedLeave.course.teacherName}</Typography>
+                    )}
                   </Box>
                   <Box>
                     <Typography sx={{ fontWeight: 700, mb: 0.5 }}>提交時間</Typography>
