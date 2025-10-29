@@ -166,6 +166,15 @@ const LeaveApplication: React.FC = () => {
 
   const { startDate, endDate } = formData;
 
+  const MAX_LEAVE_DAYS = 7;
+  const addDays = (d: Date, days: number) => {
+    const n = new Date(d);
+    n.setDate(n.getDate() + days);
+    return n;
+  };
+
+  const [rangeWarning, setRangeWarning] = useState<string | null>(null);
+
   const minutesOfDay = (d: Date) => d.getHours() * 60 + d.getMinutes();
 
   // Given a course schedule (string or object) and the selected start/end range,
@@ -436,6 +445,15 @@ const fetchEnrollments = async (uid: string) => {
       return;
     }
 
+    // 限制：新增請假時（非編輯）期間不得超過 MAX_LEAVE_DAYS
+    if (!isEditMode && formData.startDate && formData.endDate) {
+      const diffMs = (new Date(formData.endDate)).getTime() - (new Date(formData.startDate)).getTime();
+      if (diffMs > MAX_LEAVE_DAYS * 24 * 60 * 60 * 1000) {
+        setError(`請假期間不得超過 ${MAX_LEAVE_DAYS} 天`);
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -643,7 +661,20 @@ const fetchEnrollments = async (uid: string) => {
                     label="開始時間"
                     value={formData.startDate}
                     onChange={(newValue) => {
-                      setFormData(prev => ({ ...prev, startDate: newValue }));
+                      setRangeWarning(null);
+                      setFormData(prev => {
+                        const next = { ...prev, startDate: newValue };
+                        if (!isEditMode && newValue && prev.endDate) {
+                          const s = new Date(newValue as Date);
+                          const e = new Date(prev.endDate as Date);
+                          const maxEnd = addDays(s, MAX_LEAVE_DAYS);
+                          if (e > maxEnd) {
+                            setRangeWarning(`請假期間不得超過 ${MAX_LEAVE_DAYS} 天，結束時間已調整`);
+                            next.endDate = maxEnd;
+                          }
+                        }
+                        return next;
+                      });
                     }}
                     disabled={loading || isEditMode}
                     slotProps={{ textField: { placeholder: '年/月/日', fullWidth: true } }}
@@ -655,13 +686,31 @@ const fetchEnrollments = async (uid: string) => {
                     label="結束時間"
                     value={formData.endDate}
                     onChange={(newValue) => {
-                      setFormData(prev => ({ ...prev, endDate: newValue }));
+                      setRangeWarning(null);
+                      setFormData(prev => {
+                        const next = { ...prev, endDate: newValue };
+                        if (!isEditMode && prev.startDate && newValue) {
+                          const s = new Date(prev.startDate as Date);
+                          const e = new Date(newValue as Date);
+                          const maxEnd = addDays(s, MAX_LEAVE_DAYS);
+                          if (e > maxEnd) {
+                            setRangeWarning(`請假期間不得超過 ${MAX_LEAVE_DAYS} 天，已自動調整至 ${maxEnd.toLocaleString()}`);
+                            next.endDate = maxEnd;
+                          }
+                        }
+                        return next;
+                      });
                     }}
                     disabled={loading || isEditMode}
+                    minDateTime={formData.startDate || undefined}
+                    maxDateTime={formData.startDate ? addDays(formData.startDate, MAX_LEAVE_DAYS) : undefined}
                     slotProps={{ textField: { placeholder: '年/月/日', fullWidth: true } }}
                     sx={{ width: '100%' }}
                   />
                 </LocalizationProvider>
+                {rangeWarning && (
+                  <Typography variant="caption" color="warning.main" sx={{ display: 'block' }}>{rangeWarning}</Typography>
+                )}
               </Box>
               {/* After student selects start/end time, allow explicit confirmation to compute matching courses */}
               {!formData.startDate || !formData.endDate ? (
