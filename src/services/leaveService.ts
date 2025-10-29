@@ -31,7 +31,7 @@ type FirestoreLeaveData = {
   reviewComment?: string;
   department?: string;
   studentId?: string;
-  course?: string;
+  course?: { code: string; name?: string; teacherUid?: string } | string;
 };
 
 interface CreateLeaveRequest {
@@ -41,7 +41,10 @@ interface CreateLeaveRequest {
   reason: string;
   attachments?: File[];
   // Selected course for which the student requests leave (single selection)
-  course?: { code: string; teacherUid?: string; teacherName?: string };
+  course?: { code: string; teacherUid?: string; teacherName?: string; name?: string };
+  // allow optional status/review metadata on create (backwards compatible)
+  status?: string;
+  reviewComment?: string;
 }
 
 export class LeaveService {
@@ -97,15 +100,40 @@ export class LeaveService {
         startDate: Timestamp.fromDate(data.startDate),
         endDate: Timestamp.fromDate(data.endDate),
         reason: data.reason,
-        status: 'pending',
+        status: data.status || 'pending',
         attachments: attachmentUrls,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now()
       };
 
   if (data.course) {
-    (newLeaveData as any).course = data.course;
-    (newLeaveData as any).assignedTeacherUid = data.course.teacherUid || null;
+    // Store a compact course object that contains the course code and a human-friendly name.
+    // Prefer an explicit course name, then teacherName (fallback), and finally the code.
+    const courseObj: any = {
+      code: (data.course as any).code
+    };
+    const maybeName = (data.course as any).name || (data.course as any).courseName || (data.course as any).teacherName;
+    if (maybeName) courseObj.name = maybeName;
+    // keep teacherUid separate so downstream queries can filter by assignedTeacherUid
+    (newLeaveData as any).course = courseObj;
+    (newLeaveData as any).assignedTeacherUid = (data.course as any).teacherUid || null;
+  }
+
+  // If caller provided review/status metadata at creation time (e.g. an admin/teacher creating
+  // an approved/rejected leave), record who reviewed and when — even if no textual comment
+  // was supplied. This ensures review audit fields are always present when status changes.
+  if (data.status && (data.status === 'approved' || data.status === 'rejected')) {
+    try {
+      const reviewer = auth.currentUser?.uid || null;
+      if (reviewer) (newLeaveData as any).reviewedBy = reviewer;
+      (newLeaveData as any).reviewedAt = Timestamp.now();
+    } catch (e) {
+      // ignore auth read errors, but still attempt to write reviewedAt
+      (newLeaveData as any).reviewedAt = Timestamp.now();
+    }
+  }
+  if (data.reviewComment !== undefined) {
+    (newLeaveData as any).reviewComment = data.reviewComment;
   }
 
       // remove undefined fields just in case (use any to avoid TS index errors)

@@ -486,9 +486,11 @@ const fetchEnrollments = async (uid: string) => {
         });
       } else {
         // Build course payload but omit any undefined fields to avoid Firestore addDoc() invalid data errors
-        let coursePayload: { code: string; teacherUid?: string; teacherName?: string } | undefined = undefined;
+        let coursePayload: { code: string; name?: string; teacherUid?: string; teacherName?: string } | undefined = undefined;
         if (selectedCourse) {
-          coursePayload = { code: selectedCourse.code };
+          // prefer an explicit course name, fall back to teacherName, otherwise leave undefined
+          const name = selectedCourse.name || selectedCourse.teacherName || selectedCourse.code;
+          coursePayload = { code: selectedCourse.code, name };
           if (selectedCourse.teacherUid) coursePayload.teacherUid = selectedCourse.teacherUid;
           if (selectedCourse.teacherName) coursePayload.teacherName = selectedCourse.teacherName;
         }
