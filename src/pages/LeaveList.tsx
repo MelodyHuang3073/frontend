@@ -216,8 +216,8 @@ const LeaveList: React.FC = () => {
           <CircularProgress />
         </Box>
       ) : (
-        <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-    <Table sx={{ minWidth: 1100, tableLayout: 'fixed' }}>
+    <TableContainer component={Paper} sx={{ overflowX: 'auto', mx: 'auto', maxWidth: 1100, width: '100%' }}>
+  <Table sx={{ minWidth: 1100, tableLayout: 'fixed' }}>
       <TableHead>
                   <TableRow>
                     <TableCell sx={{ width: '8%' }}>假別</TableCell>
