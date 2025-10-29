@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "firebase functions:config:set smtp.host=\"smtp.sendgrid.net\" smtp.port=\"587\" smtp.user=\"apikey\" smtp.pass=\"SG.xxx\" mail.from=\"no-reply@yourdomain.com\" app.url=\"https://your-frontend.example\"": "software-engineering-edc96"
+  },
+  "targets": {},
+  "etags": {}
+}
