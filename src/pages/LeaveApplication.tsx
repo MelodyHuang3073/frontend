@@ -19,7 +19,7 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { zhTW } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
-import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, doc, Timestamp } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { LeaveService } from '../services/leaveService';
 import { LeaveType } from '../types';
@@ -485,6 +485,22 @@ const fetchEnrollments = async (uid: string) => {
           reviewComment: undefined
         });
       } else {
+        // Prevent submitting overlapping leaves for the same user (quick client-side check)
+        try {
+          const overlapRes = await LeaveService.checkOverlapForUser(auth.currentUser!.uid, Timestamp.fromDate(useStartDate!), Timestamp.fromDate(useEndDate!));
+          if (!overlapRes.success) {
+            setError(overlapRes.error || '檢查重複請假時發生錯誤');
+            setLoading(false);
+            return;
+          }
+          if (overlapRes.data === true) {
+            setError('您已提交過同樣時段的請假申請');
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.warn('overlap check failed', e);
+        }
         // Build course payload but omit any undefined fields to avoid Firestore addDoc() invalid data errors
         let coursePayload: { code: string; name?: string; teacherUid?: string; teacherName?: string } | undefined = undefined;
         if (selectedCourse) {

@@ -136,6 +136,18 @@ export class LeaveService {
     (newLeaveData as any).reviewComment = data.reviewComment;
   }
 
+      // Before creating, ensure the user doesn't already have an overlapping leave
+      const newStartTs = Timestamp.fromDate(data.startDate);
+      const newEndTs = Timestamp.fromDate(data.endDate);
+      const overlapCheck = await LeaveService.checkOverlapForUser(user.uid, newStartTs, newEndTs);
+      if (!overlapCheck.success) {
+        return { success: false, error: overlapCheck.error || '檢查重複請假時發生錯誤' };
+      }
+      // if data === true, an overlapping leave exists
+      if (overlapCheck.data === true) {
+        return { success: false, error: '您已提交過同樣時段的請假申請' };
+      }
+
       // remove undefined fields just in case (use any to avoid TS index errors)
       Object.keys(newLeaveData).forEach(k => {
         if ((newLeaveData as any)[k] === undefined) delete (newLeaveData as any)[k];
@@ -352,6 +364,51 @@ export class LeaveService {
         success: false,
         error: error.message
       };
+    }
+  }
+
+  /**
+   * Check whether the given user already has a leave that overlaps the provided range.
+   * Firestore can't do two different inequality filters across different fields efficiently here,
+   * so we query for leaves whose startDate <= newEnd and then filter client-side by endDate >= newStart.
+   */
+  static async checkOverlapForUser(userId: string, newStart: Timestamp, newEnd: Timestamp): Promise<ApiResponse<boolean>> {
+    try {
+      const q = query(
+        collection(db, 'leaves'),
+        where('userId', '==', userId),
+        // any leave that starts on or before the newEnd could overlap
+        where('startDate', '<=', newEnd),
+        orderBy('startDate', 'asc')
+      );
+      let snap;
+      try {
+        snap = await getDocs(q);
+      } catch (err: any) {
+        // If Firestore complains the query requires an index, fall back to a broader user-only query
+        const msg = err?.message || '';
+        if (err?.code === 'failed-precondition' || /requires an index|index.*required/i.test(msg)) {
+          console.warn('Overlap query requires composite index; falling back to user-only query:', msg);
+          snap = await getDocs(query(collection(db, 'leaves'), where('userId', '==', userId)));
+        } else {
+          throw err;
+        }
+      }
+      for (const d of snap.docs) {
+        const data: any = d.data();
+        const existingEnd: any = data.endDate;
+        // normalize to Firestore Timestamp -> compare
+        if (!existingEnd) continue;
+        const existingEndTs: Timestamp = existingEnd instanceof Timestamp ? existingEnd : (existingEnd.toDate ? existingEnd : Timestamp.fromDate(new Date(existingEnd)));
+        // overlap if existingEnd >= newStart
+        if (existingEndTs.toMillis() >= newStart.toMillis()) {
+          // found an overlapping leave
+          return { success: true, data: true };
+        }
+      }
+      return { success: true, data: false };
+    } catch (err: any) {
+      return { success: false, error: err.message || '檢查重複請假時發生錯誤' };
     }
   }
 
