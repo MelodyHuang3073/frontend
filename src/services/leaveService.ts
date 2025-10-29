@@ -303,11 +303,20 @@ export class LeaveService {
   ): Promise<ApiResponse<LeaveApplication>> {
     try {
       const docRef = doc(db, 'leaves', id);
-      await updateDoc(docRef, {
+      const payload: any = {
         status,
-        comment,
         updatedAt: Timestamp.now()
-      });
+      };
+      if (comment !== undefined) payload.reviewComment = comment;
+      // record who reviewed and when
+      try {
+        const reviewer = auth.currentUser?.uid || null;
+        if (reviewer) payload.reviewedBy = reviewer;
+        payload.reviewedAt = Timestamp.now();
+      } catch (e) {
+        // ignore auth read errors
+      }
+      await updateDoc(docRef, payload);
 
       return await LeaveService.getLeaveById(id);
     } catch (error: any) {

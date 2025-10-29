@@ -25,6 +25,7 @@ import {
   List,
   ListItem,
   ListItemText,
+  TextField,
 } from '@mui/material';
 import {
   Visibility as VisibilityIcon,
@@ -48,6 +49,37 @@ const LeaveList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [reviewTargetId, setReviewTargetId] = useState<string | null>(null);
+  const [reviewAction, setReviewAction] = useState<'approved' | 'rejected' | null>(null);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  
+  const handleReviewSubmit = async () => {
+    if (!reviewTargetId || !reviewAction) return;
+    if (reviewAction === 'rejected' && !reviewComment.trim()) {
+      setReviewError('請輸入拒絕原因');
+      return;
+    }
+    setReviewLoading(true);
+    setReviewError(null);
+    try {
+      const res = await LeaveService.updateLeaveStatus(reviewTargetId, reviewAction, reviewComment || undefined);
+      if (res.success) {
+        const updated = await LeaveService.getLeaves();
+        if (updated.success && updated.data) setLeaves(updated.data);
+        setReviewDialogOpen(false);
+      } else {
+        setReviewError(res.error || '更新失敗');
+      }
+    } catch (e) {
+      console.error('review submit failed', e);
+      setReviewError('更新失敗，請稍後再試');
+    } finally {
+      setReviewLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchLeaves = async () => {
@@ -278,18 +310,25 @@ const LeaveList: React.FC = () => {
                         leave.status === 'pending' && (
                           <>
                             <Button size="small" onClick={async () => {
-                              const res = await LeaveService.updateLeaveStatus(leave.id, 'approved', 'Approved by teacher');
-                              if (res.success) {
-                                const updated = await LeaveService.getLeaves();
-                                if (updated.success && updated.data) setLeaves(updated.data);
+                              // approve without mandatory comment
+                              try {
+                                const res = await LeaveService.updateLeaveStatus(leave.id, 'approved');
+                                if (res.success) {
+                                  const updated = await LeaveService.getLeaves();
+                                  if (updated.success && updated.data) setLeaves(updated.data);
+                                }
+                              } catch (e) {
+                                console.error('approve failed', e);
+                                setError('核准失敗，請稍後再試');
                               }
                             }}>核准</Button>
-                            <Button size="small" color="error" onClick={async () => {
-                              const res = await LeaveService.updateLeaveStatus(leave.id, 'rejected', 'Rejected by teacher');
-                              if (res.success) {
-                                const updated = await LeaveService.getLeaves();
-                                if (updated.success && updated.data) setLeaves(updated.data);
-                              }
+                            <Button size="small" color="error" onClick={() => {
+                              // open dialog to collect rejection reason
+                              setReviewTargetId(leave.id);
+                              setReviewAction('rejected');
+                              setReviewComment('');
+                              setReviewError(null);
+                              setReviewDialogOpen(true);
                             }}>拒絕</Button>
                           </>
                         )
@@ -440,12 +479,12 @@ const LeaveList: React.FC = () => {
                     )}
                   </Box>
                   <Box>
-                    <Typography sx={{ fontWeight: 700, mb: 0.5 }}>結束時間</Typography>
-                    <Typography sx={{ fontSize: '1rem' }}>{selectedLeave.endDate ? format(selectedLeave.endDate, 'yyyy/MM/dd HH:mm', { locale: zhTW }) : '—'}</Typography>
-                  </Box>
-                  <Box>
                     <Typography sx={{ fontWeight: 700, mb: 0.5 }}>開始時間</Typography>
                     <Typography sx={{ fontSize: '1rem' }}>{selectedLeave.startDate ? format(selectedLeave.startDate, 'yyyy/MM/dd HH:mm', { locale: zhTW }) : '—'}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontWeight: 700, mb: 0.5 }}>結束時間</Typography>
+                    <Typography sx={{ fontSize: '1rem' }}>{selectedLeave.endDate ? format(selectedLeave.endDate, 'yyyy/MM/dd HH:mm', { locale: zhTW }) : '—'}</Typography>
                   </Box>
                   <Box>
                     <Typography sx={{ fontWeight: 700, mb: 0.5 }}>提交時間</Typography>
@@ -476,12 +515,39 @@ const LeaveList: React.FC = () => {
                     </List>
                   </Box>
                 )}
+                      {selectedLeave.reviewComment && (
+                        <Box>
+                          <Typography sx={{ fontWeight: 700, mb: 0.5 }}>審核意見</Typography>
+                          <Typography sx={{ fontSize: '1rem', whiteSpace: 'pre-wrap' }}>{selectedLeave.reviewComment}</Typography>
+                        </Box>
+                      )}
               </Stack>
             </Box>
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDetailsOpen(false)}>關閉</Button>
+        </DialogActions>
+      </Dialog>
+      {/* Teacher review dialog for reject/optional comments */}
+      <Dialog open={reviewDialogOpen} onClose={() => setReviewDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{reviewAction === 'rejected' ? '拒絕請假並說明理由' : '審核意見'}</DialogTitle>
+        <DialogContent>
+          {reviewError && <Alert severity="error" sx={{ mb: 1 }}>{reviewError}</Alert>}
+          <TextField
+            fullWidth
+            multiline
+            minRows={3}
+            placeholder={reviewAction === 'rejected' ? '請輸入拒絕原因（學生將看到此內容）' : '可選的審核意見'}
+            value={reviewComment}
+            onChange={(e) => setReviewComment(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReviewDialogOpen(false)} disabled={reviewLoading}>取消</Button>
+          <Button variant="contained" onClick={handleReviewSubmit} disabled={reviewLoading}>
+            {reviewLoading ? <CircularProgress size={18} /> : (reviewAction === 'rejected' ? '拒絕並送出' : '送出')}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
