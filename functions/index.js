@@ -6,37 +6,65 @@ const nodemailer = require('nodemailer');
 admin.initializeApp();
 
 // Read SMTP/app config from functions config (set with `firebase functions:config:set`)
+// Note: functions.config() is being deprecated; prefer Secret Manager or env vars for production.
 const smtpConfig = functions.config().smtp || {};
-const mailFrom = (functions.config().mail && functions.config().mail.from) || smtpConfig.user || 'no-reply@example.com';
+const mailFrom = (functions.config().mail && functions.config().mail.from) || process.env.MAIL_FROM || smtpConfig.user || 'no-reply@example.com';
 const appUrl = (functions.config().app && functions.config().app.url) || process.env.FRONTEND_URL || 'https://your-app-url.example';
 
 let transporter = null;
-if (smtpConfig.host && smtpConfig.user && smtpConfig.pass) {
-  transporter = nodemailer.createTransport({
-    host: smtpConfig.host,
-    port: smtpConfig.port ? parseInt(smtpConfig.port, 10) : 587,
-    secure: smtpConfig.secure === 'true' || smtpConfig.secure === true, // true for 465, false for other ports
+
+function createTransportFromConfig(cfg) {
+  return nodemailer.createTransport({
+    host: cfg.host,
+    port: cfg.port ? parseInt(cfg.port, 10) : 587,
+    secure: cfg.secure === 'true' || cfg.secure === true || (cfg.port && parseInt(cfg.port, 10) === 465),
     auth: {
-      user: smtpConfig.user,
-      pass: smtpConfig.pass
+      user: cfg.user,
+      pass: cfg.pass
     }
   });
+}
+
+// Support three config sources (priority): functions.config().smtp -> process.env -> none
+const envSmtp = {
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT,
+  secure: process.env.SMTP_SECURE,
+  user: process.env.SMTP_USER,
+  pass: process.env.SMTP_PASS
+};
+
+if (smtpConfig.host && smtpConfig.user && smtpConfig.pass) {
+  transporter = createTransportFromConfig(smtpConfig);
+  console.log('Using SMTP config from functions.config()');
+} else if (envSmtp.host && envSmtp.user && envSmtp.pass) {
+  transporter = createTransportFromConfig(envSmtp);
+  console.log('Using SMTP config from environment variables (process.env).');
 } else {
-  console.warn('SMTP config not found. Set functions config: `firebase functions:config:set smtp.host="..." smtp.port="..." smtp.user="..." smtp.pass="..." mail.from="..." app.url="https://..."`');
+  console.warn('SMTP config not found. Set functions config or environment variables: smtp.host/smtp.user/smtp.pass (and optionally port/secure).');
+}
+
+// Verify transporter at cold start so auth errors are visible in logs quickly.
+if (transporter) {
+  transporter.verify().then(() => {
+    console.log('SMTP transporter verified successfully');
+  }).catch((err) => {
+    console.error('SMTP transporter verification failed:', err && (err.message || err));
+  });
 }
 
 async function sendMailSafe(mailOptions) {
   if (!transporter) {
-    const msg = `Transporter not configured, skipping sending email to ${mailOptions.to}`;
+    const msg = `No email transporter configured, skipping sending email to ${mailOptions.to}`;
     console.warn(msg);
     return { success: false, error: msg };
   }
   try {
     const res = await transporter.sendMail(mailOptions);
-    console.log('Email sent to', mailOptions.to, res && res.messageId);
+    console.log('Email sent (nodemailer) to', mailOptions.to, res && res.messageId);
     return { success: true, result: res };
   } catch (err) {
-    console.error('Failed to send email', err);
+    console.error('Failed to send email via nodemailer', err && (err.message || err));
     return { success: false, error: err.message || String(err) };
   }
 }
