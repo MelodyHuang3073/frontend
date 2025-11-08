@@ -3,6 +3,10 @@ import {
   Box,
   Paper,
   Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
   Table,
   TableBody,
   TableCell,
@@ -55,6 +59,8 @@ const LeaveList: React.FC = () => {
   const [reviewComment, setReviewComment] = useState('');
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
+  const [searchText, setSearchText] = useState('');
+  const [searchBy, setSearchBy] = useState<'student' | 'course'>('student');
   
   const handleReviewSubmit = async () => {
     if (!reviewTargetId || !reviewAction) return;
@@ -166,6 +172,36 @@ const LeaveList: React.FC = () => {
     fetchLeaves();
   }, []);
 
+  const getCourseLabel = (leave: LeaveApplication) => {
+    if (!leave.course) return '';
+    if (typeof leave.course === 'string') return leave.course;
+    return (leave.course.name || leave.course.code || leave.course.teacherName || '').toString();
+  };
+
+  const filteredLeaves = React.useMemo(() => {
+    if (!searchText.trim()) return leaves;
+    const q = searchText.trim().toLowerCase();
+    return leaves.filter(l => {
+      if (searchBy === 'student') {
+        return (l.userName || '').toLowerCase().includes(q) || (l.studentId || '').toLowerCase().includes(q);
+      }
+      // course
+      const label = getCourseLabel(l).toLowerCase();
+      return label.includes(q);
+    });
+  }, [leaves, searchText, searchBy]);
+
+  // Always sort by createdAt (newest first) now that sort dropdown is removed
+  const sortedLeaves = React.useMemo(() => {
+    const arr = [...filteredLeaves];
+    arr.sort((a, b) => {
+      const ta = a.createdAt && typeof (a.createdAt as any).toDate === 'function' ? (a.createdAt as any).toDate().getTime() : (a.createdAt instanceof Date ? a.createdAt.getTime() : (a.createdAt && (a.createdAt as any).seconds ? (a.createdAt as any).seconds * 1000 : 0));
+      const tb = b.createdAt && typeof (b.createdAt as any).toDate === 'function' ? (b.createdAt as any).toDate().getTime() : (b.createdAt instanceof Date ? b.createdAt.getTime() : (b.createdAt && (b.createdAt as any).seconds ? (b.createdAt as any).seconds * 1000 : 0));
+      return tb - ta;
+    });
+    return arr;
+  }, [filteredLeaves]);
+
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
   };
@@ -249,6 +285,36 @@ const LeaveList: React.FC = () => {
         </Box>
       ) : (
     <TableContainer component={Paper} sx={{ overflowX: 'auto', mx: 'auto', maxWidth: 1100, width: '100%' }}>
+      {/* Sorting control for teachers */}
+      {role === 'teacher' && (
+        <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <FormControl size="small" sx={{ minWidth: 180 }}>
+              <InputLabel id="search-by-label">搜尋欄位</InputLabel>
+              <Select
+                labelId="search-by-label"
+                value={searchBy}
+                label="搜尋欄位"
+                onChange={(e) => {
+                  const v = e.target.value as string;
+                  if (v === 'student' || v === 'course') setSearchBy(v as any);
+                }}
+              >
+                <MenuItem value="student">學生</MenuItem>
+                <MenuItem value="course">課程</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <TextField
+              size="small"
+              placeholder={searchBy === 'student' ? '搜尋學生姓名或學號' : '搜尋課程名稱或代碼'}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+          </Box>
+        </Box>
+      )}
   <Table sx={{ minWidth: 1100, tableLayout: 'fixed' }}>
       <TableHead>
                   <TableRow>
@@ -263,7 +329,7 @@ const LeaveList: React.FC = () => {
                   </TableRow>
                 </TableHead>
               <TableBody>
-              {leaves
+              {sortedLeaves
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((leave) => (
                   <TableRow key={leave.id}>
@@ -393,7 +459,7 @@ const LeaveList: React.FC = () => {
                     </TableCell>
                   </TableRow>
                 ))}
-              {!loading && leaves.length === 0 && (
+              {!loading && sortedLeaves.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={8} align="center">
                     尚無請假紀錄
@@ -405,7 +471,7 @@ const LeaveList: React.FC = () => {
           <TablePagination
             rowsPerPageOptions={[5, 10, 25]}
             component="div"
-            count={leaves.length}
+            count={sortedLeaves.length}
             rowsPerPage={rowsPerPage}
             page={page}
             onPageChange={handleChangePage}
