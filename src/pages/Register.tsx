@@ -114,19 +114,21 @@ const Register: React.FC = () => {
       });
 
       // 在 Firestore 中創建用戶檔案
-      const userData = {
+      // 只儲存與角色相關的識別欄位（學生存 studentId，教師存 staffId），不要在註冊時新增登入次數/時間欄位
+      const baseUserData: any = {
         uid: userCredential.user.uid,
         username: formData.username,
         email: formData.email,
         role: formData.role,
-        studentId: formData.role === 'student' ? formData.studentId : null,
-        staffId: formData.role === 'teacher' ? formData.staffId : null,
         createdAt: new Date(),
         updatedAt: new Date(),
         status: 'active',
-        loginCount: 0,
-        lastLoginAt: null
       };
+
+      const userData =
+        formData.role === 'student'
+          ? { ...baseUserData, studentId: formData.studentId }
+          : { ...baseUserData, staffId: formData.staffId };
 
       try {
         await setDoc(doc(db, 'users', userCredential.user.uid), userData);
