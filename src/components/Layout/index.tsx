@@ -21,6 +21,7 @@ import {
   ExitToApp as ExitToAppIcon,
   // School icon removed because "我的選課紀錄" menu was removed
 } from '@mui/icons-material';
+import { School as SchoolIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../../firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -44,6 +45,10 @@ const Layout: React.FC = () => {
     const items: { text: string; icon: React.ReactElement; path: string }[] = [];
     // Always show homepage first
     items.push({ text: '首頁', icon: <AssignmentIcon />, path: '/' });
+    // Student-only: 我的課表
+    if (role === 'student') {
+      items.push({ text: '我的課表', icon: <SchoolIcon />, path: '/student-schedule' });
+    }
     // Profile page
     items.push({ text: '個人資訊', icon: <ExitToAppIcon />, path: '/profile' });
     // Make leave application the system homepage for students

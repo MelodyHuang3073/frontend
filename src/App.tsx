@@ -11,6 +11,7 @@ import LeaveApplication from './pages/LeaveApplication';
 import LeaveList from './pages/LeaveList';
 import LeaveApproval from './pages/LeaveApproval';
 import Profile from './pages/Profile';
+import StudentSchedule from './pages/StudentSchedule';
 
 // Components
 import Layout from './components/Layout';
@@ -57,6 +58,11 @@ function App() {
               <Route path="leave-list" element={
                 <PrivateRoute>
                   <LeaveList />
+                </PrivateRoute>
+              } />
+              <Route path="student-schedule" element={
+                <PrivateRoute>
+                  <StudentSchedule />
                 </PrivateRoute>
               } />
               <Route path="leave-approval" element={
