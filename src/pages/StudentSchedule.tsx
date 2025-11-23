@@ -60,6 +60,40 @@ const formatWeekday = (d?: string) => {
   return map[key] || d;
 };
 
+// convert various weekday strings to an order number (Mon=1 .. Sun=7). Unknown => 8
+const weekdayOrder = (d?: string) => {
+  if (!d) return 8;
+  const s = d.trim().toLowerCase();
+  // english keys
+  if (/^mon(day)?$/.test(s) || s === 'mon') return 1;
+  if (/^tue(s(day)?)?$/.test(s) || /^tues?$/.test(s)) return 2;
+  if (/^wed(nesday)?$/.test(s) || s === 'wed') return 3;
+  if (/^thu(rs(day)?)?$/.test(s) || /^thurs?$/.test(s)) return 4;
+  if (/^fri(day)?$/.test(s) || s === 'fri') return 5;
+  if (/^sat(urday)?$/.test(s) || s === 'sat') return 6;
+  if (/^sun(day)?$/.test(s) || s === 'sun') return 7;
+  // chinese keys: 星期一/週一/周一 etc.
+  if (s.includes('星期') || s.includes('週') || s.includes('周')) {
+    if (s.includes('一')) return 1;
+    if (s.includes('二')) return 2;
+    if (s.includes('三')) return 3;
+    if (s.includes('四')) return 4;
+    if (s.includes('五')) return 5;
+    if (s.includes('六')) return 6;
+    if (s.includes('日') || s.includes('天')) return 7;
+  }
+  return 8;
+};
+
+const toMinutes = (t?: string) => {
+  if (!t) return 24 * 60; // end of day
+  const m = t.match(/(\d{1,2}):(\d{2})/);
+  if (!m) return 24 * 60;
+  const hh = parseInt(m[1], 10);
+  const mm = parseInt(m[2], 10);
+  return hh * 60 + mm;
+};
+
 const StudentSchedule: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -246,6 +280,15 @@ const StudentSchedule: React.FC = () => {
             }));
 
             if (scheduleItems.length > 0) {
+              // sort by weekday (Mon..Sun) then by start time
+              scheduleItems.sort((a, b) => {
+                const da = weekdayOrder(a.day);
+                const db = weekdayOrder(b.day);
+                if (da !== db) return da - db;
+                const ta = toMinutes(a.startTime);
+                const tb = toMinutes(b.startTime);
+                return ta - tb;
+              });
               setSchedule(scheduleItems);
               setLoading(false);
               return;
