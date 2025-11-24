@@ -10,7 +10,12 @@ import {
   TableBody,
   CircularProgress,
   Alert,
+  TableContainer,
+  Stack,
+  Divider,
+  IconButton,
 } from '@mui/material';
+import PrintIcon from '@mui/icons-material/Print';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, query, where, collection, getDocs } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -23,6 +28,7 @@ type ScheduleItem = {
   startTime: string; // e.g., '09:00'
   endTime: string; // e.g., '10:20'
   location?: string;
+  locationSource?: string;
   weeks?: string; // e.g., '1-16'
 };
 
@@ -92,6 +98,40 @@ const toMinutes = (t?: string) => {
   const hh = parseInt(m[1], 10);
   const mm = parseInt(m[2], 10);
   return hh * 60 + mm;
+};
+
+// resolve location from various possible fields on schedule entry, course or enrollment
+// returns { value, source } where source indicates which field provided the value
+const resolveLocation = (it?: any, courseData?: any, en?: any) => {
+  const fields: Array<{ value: any; source: string }> = [
+    // schedule entry variants
+    { value: it?.location, source: 'schedule.location' },
+    { value: it?.locatoin, source: 'schedule.locatoin' },
+    { value: it?.locaton, source: 'schedule.locaton' },
+    { value: it?.room, source: 'schedule.room' },
+    { value: it?.venue, source: 'schedule.venue' },
+    { value: it?.classroom, source: 'schedule.classroom' },
+    // course document variants
+    { value: courseData?.location, source: 'course.location' },
+    { value: courseData?.locatoin, source: 'course.locatoin' },
+    { value: courseData?.locaton, source: 'course.locaton' },
+    { value: courseData?.room, source: 'course.room' },
+    { value: courseData?.venue, source: 'course.venue' },
+    { value: courseData?.classroom, source: 'course.classroom' },
+    { value: courseData?.locationName, source: 'course.locationName' },
+    { value: courseData?.place, source: 'course.place' },
+    // enrollment variants
+    { value: en?.location, source: 'enrollment.location' },
+    { value: en?.locatoin, source: 'enrollment.locatoin' },
+    { value: en?.locaton, source: 'enrollment.locaton' },
+    { value: en?.room, source: 'enrollment.room' },
+    { value: en?.venue, source: 'enrollment.venue' },
+    { value: en?.classroom, source: 'enrollment.classroom' },
+  ];
+  for (const f of fields) {
+    if (typeof f.value === 'string' && f.value.trim() !== '') return { value: f.value.trim(), source: f.source };
+  }
+  return { value: '', source: '' };
 };
 
 const StudentSchedule: React.FC = () => {
@@ -211,6 +251,7 @@ const StudentSchedule: React.FC = () => {
                   // schedule can be an array or a single string like "Mon 09:00-10:30"
                   if (Array.isArray(courseData.schedule) && courseData.schedule.length > 0) {
                     courseData.schedule.forEach((it: any) => {
+                      const loc = resolveLocation(it, courseData, en);
                       scheduleItems.push({
                         courseCode: courseData.code || en.courseCode || '',
                         courseName: courseData.name || en.courseCode,
@@ -219,7 +260,8 @@ const StudentSchedule: React.FC = () => {
                         day: it.day || '',
                         startTime: it.startTime || it.start || '',
                         endTime: it.endTime || it.end || '',
-                        location: it.location || courseData.location || '',
+                        location: loc.value,
+                        locationSource: loc.source,
                       });
                     });
                   } else if (typeof courseData.schedule === 'string' && courseData.schedule.trim() !== '') {
@@ -228,6 +270,7 @@ const StudentSchedule: React.FC = () => {
                     const day = parts[0] || '';
                     const times = parts[1] || '';
                     const [start, end] = times.split('-').map((t: string) => t || '');
+                    const loc2 = resolveLocation(null, courseData, en);
                     scheduleItems.push({
                       courseCode: courseData.code || en.courseCode || '',
                       courseName: courseData.name || en.courseCode,
@@ -236,10 +279,12 @@ const StudentSchedule: React.FC = () => {
                       day,
                       startTime: start,
                       endTime: end,
-                      location: courseData.location || en.location || '',
+                      location: loc2.value,
+                      locationSource: loc2.source,
                     });
                   } else {
                     // no schedule info available
+                    const loc3 = resolveLocation(null, courseData, en);
                     scheduleItems.push({
                       courseCode: courseData.code || en.courseCode || '',
                       courseName: courseData.name || en.courseCode,
@@ -248,11 +293,13 @@ const StudentSchedule: React.FC = () => {
                       day: '',
                       startTime: '',
                       endTime: '',
-                      location: courseData.location || en.location || '',
+                      location: loc3.value,
+                      locationSource: loc3.source,
                     });
                   }
                 } else {
                   // no course document — add a simple entry showing the course code and enrollment status/time
+                  const loc4 = resolveLocation(null, null, en);
                   scheduleItems.push({
                     courseCode: en.courseCode || '',
                     courseName: en.courseCode,
@@ -261,11 +308,13 @@ const StudentSchedule: React.FC = () => {
                     day: '',
                     startTime: '',
                     endTime: '',
-                    location: en.location || '',
+                    location: loc4.value,
+                    locationSource: loc4.source,
                   });
                 }
               } catch (innerErr) {
                 console.warn('failed to enrich course', en.courseCode, innerErr);
+                const loc5 = resolveLocation(null, null, en);
                 scheduleItems.push({
                   courseCode: en.courseCode || '',
                   courseName: en.courseCode,
@@ -274,7 +323,8 @@ const StudentSchedule: React.FC = () => {
                   day: '',
                   startTime: '',
                   endTime: '',
-                  location: en.location || '',
+                  location: loc5.value,
+                  locationSource: loc5.source,
                 });
               }
             }));
@@ -322,6 +372,59 @@ const StudentSchedule: React.FC = () => {
     return () => unsub();
   }, []);
 
+  // Print helper: open a new window with a simple table and call print
+  const printSchedule = (rows: ScheduleItem[]) => {
+    const w = window.open('', '_blank');
+    if (!w) return;
+    const style = `
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+      th { background: #f3f6fb; }
+    `;
+    const html = `
+      <html>
+      <head>
+        <title>我的課表</title>
+        <style>${style}</style>
+      </head>
+      <body>
+        <table>
+          <thead>
+            <tr>
+              <th>課程代碼</th>
+              <th>課程名稱</th>
+              <th>授課教師</th>
+              <th>星期</th>
+              <th>開始</th>
+              <th>結束</th>
+              <th>地點</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(r => `
+              <tr>
+                <td>${r.courseCode||''}</td>
+                <td>${r.courseName||''}</td>
+                <td>${r.teacherName||''}</td>
+                <td>${formatWeekday(r.day)||''}</td>
+                <td>${r.startTime||''}</td>
+                <td>${r.endTime||''}</td>
+                <td>${r.location||''}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => {
+      w.print();
+    }, 300);
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h5" gutterBottom>
@@ -339,35 +442,68 @@ const StudentSchedule: React.FC = () => {
       {!loading && !error && (
         <>
           {hasEnrollments === false ? (
-            <Paper sx={{ mt: 2, p: 2 }}>
-              <Typography color="text.secondary">暫無選課資訊</Typography>
+            <Paper sx={{ mt: 2, p: 4, textAlign: 'center' }} elevation={0}>
+              <Typography variant="h6" color="text.secondary">暫無選課資訊</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                系統目前查無您的選課紀錄，請確認選課狀態或聯絡系辦。
+              </Typography>
             </Paper>
           ) : (
-            <Paper sx={{ mt: 2, p: 2 }}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>課程代碼</TableCell>
-                    <TableCell>課程名稱</TableCell>
-                    <TableCell>授課教師</TableCell>
-                    <TableCell>星期</TableCell>
-                    <TableCell>開始時間</TableCell>
-                    <TableCell>結束時間</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {schedule.map((s, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell>{s.courseCode || '-'}</TableCell>
-                      <TableCell>{s.courseName || '-'}</TableCell>
-                      <TableCell>{s.teacherName || '-'}</TableCell>
-                      <TableCell>{formatWeekday(s.day)}</TableCell>
-                      <TableCell>{s.startTime || '-'}</TableCell>
-                      <TableCell>{s.endTime || '-'}</TableCell>
+            <Paper sx={{ mt: 2, p: 2 }} elevation={1}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                <Stack>
+                  <Typography variant="body2" color="text.secondary">顯示本學期選課時間表</Typography>
+                </Stack>
+                <Stack direction="row" spacing={1} alignItems="center">
+                    <IconButton size="small" onClick={() => printSchedule(schedule)} aria-label="print">
+                      <PrintIcon />
+                    </IconButton>
+                </Stack>
+              </Stack>
+              <Divider sx={{ mb: 1 }} />
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700 }}>課程</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>授課教師</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>星期</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>時間</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>地點</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHead>
+                  <TableBody>
+                    {schedule.map((s, idx) => (
+                      <TableRow
+                        key={idx}
+                        sx={{
+                          '&:nth-of-type(odd)': { backgroundColor: 'action.hover' },
+                          '&:hover': { backgroundColor: 'action.selected' },
+                        }}
+                      >
+                        <TableCell>
+                          <Stack>
+                            <Typography variant="subtitle2">{s.courseCode || '-'}</Typography>
+                            <Typography variant="body2" color="text.secondary">{s.courseName || '-'}</Typography>
+                          </Stack>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{s.teacherName || '-'}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{formatWeekday(s.day)}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{s.startTime || '-'} — {s.endTime || '-'}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{s.location || '-'}</Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </Paper>
           )}
         </>
