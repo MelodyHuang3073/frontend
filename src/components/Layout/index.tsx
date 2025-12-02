@@ -139,17 +139,21 @@ const Layout: React.FC = () => {
         <Toolbar />
         <Box sx={{ overflow: 'auto', display: 'flex', flexDirection: 'column', height: '100%' }}>
           <List>
-            {getMenuItems(userInfo?.role).map((item) => (
-              <ListItem
-                component="li"
-                key={item.text}
-                onClick={() => navigate(item.path)}
-                sx={{ cursor: 'pointer' }}
-              >
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.text} />
-              </ListItem>
-            ))}
+            {getMenuItems(userInfo?.role).map((item) => {
+              const id = (item.path || '').replace(/\//g, '') || 'home';
+              return (
+                <ListItem
+                  component="li"
+                  key={item.text}
+                  data-testid={`nav-${id}`}
+                  onClick={() => navigate(item.path)}
+                  sx={{ cursor: 'pointer' }}
+                >
+                  <ListItemIcon>{item.icon}</ListItemIcon>
+                  <ListItemText primary={item.text} />
+                </ListItem>
+              );
+            })}
           </List>
           <Box sx={{ flexGrow: 1 }} />
           {userInfo && (
