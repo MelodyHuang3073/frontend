@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
+  // Run seeder before the test suite so emulator has expected users/data
+  globalSetup: './e2e/global-setup.ts',
   testDir: './e2e',
   timeout: 60_000,
   expect: { timeout: 5000 },
