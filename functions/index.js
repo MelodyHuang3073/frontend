@@ -54,17 +54,46 @@ if (transporter) {
 }
 
 async function sendMailSafe(mailOptions) {
+  // If no transporter is configured, write the email to a local 'test_emails' collection
+  // so emulator-based integration tests can assert the outbound email content.
   if (!transporter) {
-    const msg = `No email transporter configured, skipping sending email to ${mailOptions.to}`;
+    const msg = `No email transporter configured, writing email to test_emails for ${mailOptions.to}`;
     console.warn(msg);
-    return { success: false, error: msg };
+    try {
+      await admin.firestore().collection('test_emails').add({
+        to: mailOptions.to,
+        subject: mailOptions.subject,
+        text: mailOptions.text,
+        html: mailOptions.html,
+        createdAt: Date.now(),
+        _localFallback: true
+      });
+      return { success: true, result: { fallback: true } };
+    } catch (err) {
+      console.error('Failed to write fallback email to test_emails', err && (err.message || err));
+      return { success: false, error: err.message || String(err) };
+    }
   }
+
   try {
     const res = await transporter.sendMail(mailOptions);
     console.log('Email sent (nodemailer) to', mailOptions.to, res && res.messageId);
     return { success: true, result: res };
   } catch (err) {
     console.error('Failed to send email via nodemailer', err && (err.message || err));
+    // Attempt to persist the failed email to test_emails for local inspection/tests
+    try {
+      await admin.firestore().collection('test_emails').add({
+        to: mailOptions.to,
+        subject: mailOptions.subject,
+        text: mailOptions.text,
+        html: mailOptions.html,
+        createdAt: Date.now(),
+        _sendError: err && (err.message || String(err))
+      });
+    } catch (werr) {
+      console.error('Also failed to write failed email to test_emails', werr && (werr.message || werr));
+    }
     return { success: false, error: err.message || String(err) };
   }
 }
@@ -104,7 +133,19 @@ exports.notifyTeacherOnLeave = functions.firestore.document('leaves/{leaveId}').
     const teacherDoc = await admin.firestore().doc(`users/${teacherUid}`).get();
     if (!teacherDoc.exists) {
       console.log(`Teacher user doc not found: ${teacherUid}`);
-      return null;
+      // Fallback: if the leave document contains the teacher email, use it
+      const fallbackEmail = data.assignedTeacherEmail || data.teacherEmail || (data.teacher && data.teacher.email) || null;
+      if (!fallbackEmail) {
+        return null;
+      }
+      const mailOptions = {
+        from: mailFrom,
+        to: fallbackEmail,
+        subject: `新請假通知：${data.userName || '學生'} 的請假申請`,
+        text,
+        html
+      };
+      return await sendMailSafe(mailOptions);
     }
     const teacher = teacherDoc.data() || {};
     const toEmail = teacher.email;
@@ -163,7 +204,19 @@ exports.notifyStudentOnReview = functions.firestore.document('leaves/{leaveId}')
     const userDoc = await admin.firestore().doc(`users/${userId}`).get();
     if (!userDoc.exists) {
       console.log(`Student user doc not found: ${userId}`);
-      return null;
+      // Fallback: use email present on the leave document
+      const fallbackEmail = after.userEmail || after.studentEmail || (after.user && after.user.email) || null;
+      if (!fallbackEmail) {
+        return null;
+      }
+      const mailOptions = {
+        from: mailFrom,
+        to: fallbackEmail,
+        subject,
+        text,
+        html
+      };
+      return await sendMailSafe(mailOptions);
     }
     const user = userDoc.data() || {};
     const toEmail = user.email;

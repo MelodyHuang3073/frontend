@@ -1,144 +1,70 @@
-[debug] [2025-12-02T03:29:05.097Z] ----------------------------------------------------------------------
-[debug] [2025-12-02T03:29:05.100Z] Command:       C:\Program Files\nodejs\node.exe C:\軟工\node_modules\firebase-tools\lib\bin\firebase.js emulators:start --only firestore,auth,functions,storage
-[debug] [2025-12-02T03:29:05.100Z] CLI Version:   14.26.0
-[debug] [2025-12-02T03:29:05.100Z] Platform:      win32
-[debug] [2025-12-02T03:29:05.100Z] Node Version:  v22.20.0
-[debug] [2025-12-02T03:29:05.100Z] Time:          Tue Dec 02 2025 11:29:05 GMT+0800 (台北標準時間)
-[debug] [2025-12-02T03:29:05.100Z] ----------------------------------------------------------------------
+[debug] [2025-12-06T11:17:43.087Z] ----------------------------------------------------------------------
+[debug] [2025-12-06T11:17:43.088Z] Command:       C:\Program Files\nodejs\node.exe C:\軟工\node_modules\firebase-tools\lib\bin\firebase.js emulators:start --only auth,ui --debug
+[debug] [2025-12-06T11:17:43.089Z] CLI Version:   14.26.0
+[debug] [2025-12-06T11:17:43.089Z] Platform:      win32
+[debug] [2025-12-06T11:17:43.089Z] Node Version:  v22.20.0
+[debug] [2025-12-06T11:17:43.089Z] Time:          Sat Dec 06 2025 19:17:43 GMT+0800 (台北標準時間)
+[debug] [2025-12-06T11:17:43.089Z] ----------------------------------------------------------------------
 [debug] 
-[debug] [2025-12-02T03:29:05.261Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
-[debug] [2025-12-02T03:29:05.261Z] > authorizing via signed-in user (pinchunwang910930@gmail.com)
-[debug] [2025-12-02T03:29:05.319Z] openjdk version "21.0.9" 2025-10-21 LTS
-OpenJDK Runtime Environment Temurin-21.0.9+10 (build 21.0.9+10-LTS)
-
-[debug] [2025-12-02T03:29:05.320Z] OpenJDK 64-Bit Server VM Temurin-21.0.9+10 (build 21.0.9+10-LTS, mixed mode, sharing)
-
-[debug] [2025-12-02T03:29:05.364Z] Parsed Java major version: 21
-[info] i  emulators: Starting emulators: auth, functions, firestore {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth, functions, firestore"}}
-[warn] !  storage: Not starting the storage emulator, make sure you have run firebase init. {"metadata":{"emulator":{"name":"storage"},"message":"Not starting the \u001b[1mstorage\u001b[22m emulator, make sure you have run \u001b[1mfirebase init\u001b[22m."}}
-[debug] [2025-12-02T03:29:05.372Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
-[debug] [2025-12-02T03:29:05.372Z] assigned listening specs for emulators {"user":{"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000}],"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"firestore":[{"address":"127.0.0.1","family":"IPv4","port":8080}],"firestore.websocket":[{"address":"127.0.0.1","family":"IPv4","port":9150}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
-[debug] [2025-12-02T03:29:05.375Z] Emulator locator file path: C:\Users\10156\AppData\Local\Temp\hub-software-engineering-edc96.json
-[debug] [2025-12-02T03:29:05.375Z] [hub] writing locator at C:\Users\10156\AppData\Local\Temp\hub-software-engineering-edc96.json
-[debug] [2025-12-02T03:29:05.382Z] [eventarc] Eventarc Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
-[debug] [2025-12-02T03:29:05.382Z] [tasks] Cloud Tasks Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
-[debug] [2025-12-02T03:29:05.382Z] late-assigned ports for functions and eventarc emulators {"user":{"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000}],"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"firestore":[{"address":"127.0.0.1","family":"IPv4","port":8080}],"firestore.websocket":[{"address":"127.0.0.1","family":"IPv4","port":9150}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"functions":[{"address":"127.0.0.1","family":"IPv4","port":5001}],"eventarc":[{"address":"127.0.0.1","family":"IPv4","port":9299}],"tasks":[{"address":"127.0.0.1","family":"IPv4","port":9499}]},"metadata":{"message":"late-assigned ports for functions and eventarc emulators"}}
-[warn] !  functions: The following emulators are not running, calls to these services from the Functions emulator will affect production: apphosting, database, hosting, pubsub, storage, dataconnect {"metadata":{"emulator":{"name":"functions"},"message":"The following emulators are not running, calls to these services from the Functions emulator will affect production: \u001b[1mapphosting, database, hosting, pubsub, storage, dataconnect\u001b[22m"}}
-[debug] [2025-12-02T03:29:05.394Z] defaultcredentials: writing to file C:\Users\10156\AppData\Roaming\firebase\pinchunwang910930_gmail_com_application_default_credentials.json
-[debug] [2025-12-02T03:29:05.396Z] Setting GAC to C:\Users\10156\AppData\Roaming\firebase\pinchunwang910930_gmail_com_application_default_credentials.json {"metadata":{"emulator":{"name":"functions"},"message":"Setting GAC to C:\\Users\\10156\\AppData\\Roaming\\firebase\\pinchunwang910930_gmail_com_application_default_credentials.json"}}
-[debug] [2025-12-02T03:29:05.396Z] Checked if tokens are valid: true, expires at: 1764647693036
-[debug] [2025-12-02T03:29:05.396Z] Checked if tokens are valid: true, expires at: 1764647693036
-[debug] [2025-12-02T03:29:05.397Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/software-engineering-edc96/adminSdkConfig [none]
-[debug] [2025-12-02T03:29:06.101Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/software-engineering-edc96/adminSdkConfig 200
-[debug] [2025-12-02T03:29:06.102Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/software-engineering-edc96/adminSdkConfig {"projectId":"software-engineering-edc96","storageBucket":"software-engineering-edc96.firebasestorage.app"}
-[warn] !  firestore: Did not find a Cloud Firestore rules file specified in a firebase.json config file. {"metadata":{"emulator":{"name":"firestore"},"message":"Did not find a Cloud Firestore rules file specified in a firebase.json config file."}}
-[warn] !  firestore: The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration. {"metadata":{"emulator":{"name":"firestore"},"message":"The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."}}
-[debug] [2025-12-02T03:29:06.114Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"firestore"},"message":"Ignoring unsupported arg: auto_download"}}
-[debug] [2025-12-02T03:29:06.114Z] Ignoring unsupported arg: single_project_mode_error {"metadata":{"emulator":{"name":"firestore"},"message":"Ignoring unsupported arg: single_project_mode_error"}}
-[debug] [2025-12-02T03:29:06.114Z] Starting Firestore Emulator with command {"binary":"java","args":["-Dgoogle.cloud_firestore.debug_log_level=FINE","-Duser.language=en","-jar","C:\\Users\\10156\\.cache\\firebase\\emulators\\cloud-firestore-emulator-v1.19.8.jar","--host","127.0.0.1","--port",8080,"--websocket_port",9150,"--project_id","software-engineering-edc96","--single_project_mode",true,"--functions_emulator","127.0.0.1:5001"],"optionalArgs":["port","webchannel_port","host","rules","websocket_port","functions_emulator","seed_from_export","project_id","single_project_mode"],"joinArgs":false,"shell":false,"port":8080} {"metadata":{"emulator":{"name":"firestore"},"message":"Starting Firestore Emulator with command {\"binary\":\"java\",\"args\":[\"-Dgoogle.cloud_firestore.debug_log_level=FINE\",\"-Duser.language=en\",\"-jar\",\"C:\\\\Users\\\\10156\\\\.cache\\\\firebase\\\\emulators\\\\cloud-firestore-emulator-v1.19.8.jar\",\"--host\",\"127.0.0.1\",\"--port\",8080,\"--websocket_port\",9150,\"--project_id\",\"software-engineering-edc96\",\"--single_project_mode\",true,\"--functions_emulator\",\"127.0.0.1:5001\"],\"optionalArgs\":[\"port\",\"webchannel_port\",\"host\",\"rules\",\"websocket_port\",\"functions_emulator\",\"seed_from_export\",\"project_id\",\"single_project_mode\"],\"joinArgs\":false,\"shell\":false,\"port\":8080}"}}
-[info] i  firestore: Firestore Emulator logging to firestore-debug.log {"metadata":{"emulator":{"name":"firestore"},"message":"Firestore Emulator logging to \u001b[1mfirestore-debug.log\u001b[22m"}}
-[debug] [2025-12-02T03:29:07.053Z] Dec 02, 2025 11:29:07 AM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketServer start
-INFO: Started WebSocket server on ws://127.0.0.1:9150
- {"metadata":{"emulator":{"name":"firestore"},"message":"Dec 02, 2025 11:29:07 AM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketServer start\r\nINFO: Started WebSocket server on ws://127.0.0.1:9150\r\n"}}
-[debug] [2025-12-02T03:29:07.109Z] API endpoint: http:// {"metadata":{"emulator":{"name":"firestore"},"message":"API endpoint: http://"}}
-[debug] [2025-12-02T03:29:07.109Z] 127.0.0.1:8080
-If you are using a library that supports the FIRESTORE_EMULATOR_HOST environment variable, run:
-
-   export FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
-
-If you are running a Firestore in Datastore Mode project, run:
-
-   export DATASTORE_EMULATOR_HOST=127.0.0.1:8080
-
-Note: Support for Datastore Mode is in preview. If you encounter any bugs please file at https://github.com/firebase/firebase-tools/issues.
-Dev App Server is now running.
-
- {"metadata":{"emulator":{"name":"firestore"},"message":"127.0.0.1:8080\nIf you are using a library that supports the FIRESTORE_EMULATOR_HOST environment variable, run:\r\n\n   export FIRESTORE_EMULATOR_HOST=127.0.0.1:8080\n\nIf you are running a Firestore in Datastore Mode project, run:\r\n\n   export DATASTORE_EMULATOR_HOST=127.0.0.1:8080\n\nNote: Support for Datastore Mode is in preview. If you encounter any bugs please file at https://github.com/firebase/firebase-tools/issues.\r\nDev App Server is now running.\n\r\n"}}
-[info] +  firestore: Firestore Emulator UI websocket is running on 9150. {"metadata":{"emulator":{"name":"firestore"},"message":"Firestore Emulator UI websocket is running on 9150."}}
-[info] i  functions: Watching "C:\軟工\frontend\functions" for Cloud Functions... {"metadata":{"emulator":{"name":"functions"},"message":"Watching \"C:\\軟工\\frontend\\functions\" for Cloud Functions..."}}
-[debug] [2025-12-02T03:29:10.783Z] Validating nodejs source
-[warn] !  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
-[warn] !  functions: Please note that there will be breaking changes when you upgrade. 
-[debug] [2025-12-02T03:29:11.434Z] > [functions] package.json contents: {
-  "name": "leave-management-functions",
-  "private": true,
-  "engines": {
-    "node": "20"
-  },
-  "dependencies": {
-    "firebase-admin": "^11.0.0",
-    "firebase-functions": "^4.0.0",
-    "nodemailer": "^6.9.1"
-  }
-}
-[debug] [2025-12-02T03:29:11.434Z] Building nodejs source
-[debug] [2025-12-02T03:29:11.434Z] Failed to find version of module node: reached end of search path C:\軟工\frontend\functions\node_modules
-[warn] !  functions: Your requested "node" version "20" doesn't match your global version "22". Using node@22 from host. 
-[info] i  functions: You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly 
-[debug] [2025-12-02T03:29:11.437Z] Could not find functions.yaml. Must use http discovery
-[debug] [2025-12-02T03:29:11.441Z] Found firebase-functions binary at 'C:\軟工\frontend\functions\node_modules\.bin\firebase-functions'
-[info] Serving at port 8322
-
-[error] SMTP config not found. Set functions config or environment variables: smtp.host/smtp.user/smtp.pass (and optionally port/secure).
-
-[debug] [2025-12-02T03:29:11.793Z] Got response from /__/functions.yaml {"endpoints":{"testSendEmail":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"httpsTrigger":{},"entryPoint":"testSendEmail"},"notifyTeacherOnLeave":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"eventTrigger":{"eventType":"providers/cloud.firestore/eventTypes/document.create","eventFilters":{"resource":"projects/software-engineering-edc96/databases/(default)/documents/leaves/{leaveId}"},"retry":false},"labels":{},"entryPoint":"notifyTeacherOnLeave"},"notifyStudentOnReview":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"eventTrigger":{"eventType":"providers/cloud.firestore/eventTypes/document.update","eventFilters":{"resource":"projects/software-engineering-edc96/databases/(default)/documents/leaves/{leaveId}"},"retry":false},"labels":{},"entryPoint":"notifyStudentOnReview"}},"specVersion":"v1alpha1","requiredAPIs":[]}
-[info] +  functions: Loaded functions definitions from source: testSendEmail, notifyTeacherOnLeave, notifyStudentOnReview. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: testSendEmail, notifyTeacherOnLeave, notifyStudentOnReview."}}
-[info] +  functions[us-central1-testSendEmail]: http function initialized (http://127.0.0.1:5001/software-engineering-edc96/us-central1/testSendEmail). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/software-engineering-edc96/us-central1/testSendEmail)."}}
-[debug] [2025-12-02T03:29:15.838Z] addFirestoreTrigger "{\"eventTrigger\":{\"eventType\":\"providers/cloud.firestore/eventTypes/document.create\",\"resource\":\"projects/software-engineering-edc96/databases/(default)/documents/leaves/{leaveId}\",\"service\":\"firestore.googleapis.com\"}}"
-[debug] [2025-12-02T03:29:15.838Z] >>> [apiv2][query] PUT http://127.0.0.1:8080/emulator/v1/projects/software-engineering-edc96/triggers/us-central1-notifyTeacherOnLeave-0 [none]
-[debug] [2025-12-02T03:29:15.838Z] >>> [apiv2][body] PUT http://127.0.0.1:8080/emulator/v1/projects/software-engineering-edc96/triggers/us-central1-notifyTeacherOnLeave-0 "{\"eventTrigger\":{\"eventType\":\"providers/cloud.firestore/eventTypes/document.create\",\"resource\":\"projects/software-engineering-edc96/databases/(default)/documents/leaves/{leaveId}\",\"service\":\"firestore.googleapis.com\"}}"
-[debug] [2025-12-02T03:29:15.846Z] Dec 02, 2025 11:29:15 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
-INFO: Detected non-HTTP/2 connection.
- {"metadata":{"emulator":{"name":"firestore"},"message":"Dec 02, 2025 11:29:15 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead\r\nINFO: Detected non-HTTP/2 connection.\r\n"}}
-[debug] [2025-12-02T03:29:16.127Z] Dec 02, 2025 11:29:16 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
-INFO: Detected HTTP/2 connection.
- {"metadata":{"emulator":{"name":"firestore"},"message":"Dec 02, 2025 11:29:16 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead\r\nINFO: Detected HTTP/2 connection.\r\n"}}
-[debug] [2025-12-02T03:29:17.332Z] <<< [apiv2][status] PUT http://127.0.0.1:8080/emulator/v1/projects/software-engineering-edc96/triggers/us-central1-notifyTeacherOnLeave-0 200
-[debug] [2025-12-02T03:29:17.333Z] <<< [apiv2][body] PUT http://127.0.0.1:8080/emulator/v1/projects/software-engineering-edc96/triggers/us-central1-notifyTeacherOnLeave-0 {}
-[info] +  functions[us-central1-notifyTeacherOnLeave]: firestore function initialized. {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mfirestore\u001b[22m function initialized."}}
-[debug] [2025-12-02T03:29:17.334Z] addFirestoreTrigger "{\"eventTrigger\":{\"eventType\":\"providers/cloud.firestore/eventTypes/document.update\",\"resource\":\"projects/software-engineering-edc96/databases/(default)/documents/leaves/{leaveId}\",\"service\":\"firestore.googleapis.com\"}}"
-[debug] [2025-12-02T03:29:17.334Z] >>> [apiv2][query] PUT http://127.0.0.1:8080/emulator/v1/projects/software-engineering-edc96/triggers/us-central1-notifyStudentOnReview-0 [none]
-[debug] [2025-12-02T03:29:17.334Z] >>> [apiv2][body] PUT http://127.0.0.1:8080/emulator/v1/projects/software-engineering-edc96/triggers/us-central1-notifyStudentOnReview-0 "{\"eventTrigger\":{\"eventType\":\"providers/cloud.firestore/eventTypes/document.update\",\"resource\":\"projects/software-engineering-edc96/databases/(default)/documents/leaves/{leaveId}\",\"service\":\"firestore.googleapis.com\"}}"
-[debug] [2025-12-02T03:29:17.354Z] <<< [apiv2][status] PUT http://127.0.0.1:8080/emulator/v1/projects/software-engineering-edc96/triggers/us-central1-notifyStudentOnReview-0 200
-[debug] [2025-12-02T03:29:17.354Z] <<< [apiv2][body] PUT http://127.0.0.1:8080/emulator/v1/projects/software-engineering-edc96/triggers/us-central1-notifyStudentOnReview-0 {}
-[info] +  functions[us-central1-notifyStudentOnReview]: firestore function initialized. {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mfirestore\u001b[22m function initialized."}}
-[debug] [2025-12-02T03:29:17.365Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[debug] [2025-12-06T11:17:43.250Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-12-06T11:17:43.251Z] > authorizing via signed-in user (pinchunwang910930@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[warn] !  ui: Not starting the ui emulator, make sure you have run firebase init. {"metadata":{"emulator":{"name":"ui"},"message":"Not starting the \u001b[1mui\u001b[22m emulator, make sure you have run \u001b[1mfirebase init\u001b[22m."}}
+[debug] [2025-12-06T11:17:43.258Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-12-06T11:17:43.259Z] assigned listening specs for emulators {"user":{"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000}],"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2025-12-06T11:17:43.263Z] Emulator locator file path: C:\Users\10156\AppData\Local\Temp\hub-software-engineering-edc96.json
+[debug] [2025-12-06T11:17:43.263Z] [hub] writing locator at C:\Users\10156\AppData\Local\Temp\hub-software-engineering-edc96.json
+[debug] [2025-12-06T11:17:46.969Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
 [info] 
 ┌─────────────────────────────────────────────────────────────┐
 │ ✔  All emulators ready! It is now safe to connect your app. │
 │ i  View Emulator UI at http://127.0.0.1:4000/               │
 └─────────────────────────────────────────────────────────────┘
 
-┌────────────────┬────────────────┬─────────────────────────────────┐
-│ Emulator       │ Host:Port      │ View in Emulator UI             │
-├────────────────┼────────────────┼─────────────────────────────────┤
-│ Authentication │ 127.0.0.1:9099 │ http://127.0.0.1:4000/auth      │
-├────────────────┼────────────────┼─────────────────────────────────┤
-│ Functions      │ 127.0.0.1:5001 │ http://127.0.0.1:4000/functions │
-├────────────────┼────────────────┼─────────────────────────────────┤
-│ Firestore      │ 127.0.0.1:8080 │ http://127.0.0.1:4000/firestore │
-└────────────────┴────────────────┴─────────────────────────────────┘
+┌────────────────┬────────────────┬────────────────────────────┐
+│ Emulator       │ Host:Port      │ View in Emulator UI        │
+├────────────────┼────────────────┼────────────────────────────┤
+│ Authentication │ 127.0.0.1:9099 │ http://127.0.0.1:4000/auth │
+└────────────────┴────────────────┴────────────────────────────┘
   Emulator Hub host: 127.0.0.1 port: 4400
-  Other reserved ports: 4500, 9150
+  Other reserved ports: 4500
 
 Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
  
-[debug] [2025-12-02T03:29:27.918Z] >>> [apiv2][query] POST http://127.0.0.1:5001/functions/projects/software-engineering-edc96/trigger_multicast [none]
-[debug] [2025-12-02T03:29:27.919Z] >>> [apiv2][body] POST http://127.0.0.1:5001/functions/projects/software-engineering-edc96/trigger_multicast {"eventId":"30f1dd01-1983-4006-be65-e2962c043c14","eventType":"providers/firebase.auth/eventTypes/user.create","resource":{"name":"projects/software-engineering-edc96","service":"firebaseauth.googleapis.com"},"params":{},"timestamp":"2025-12-02T03:29:27.918Z","data":{"uid":"Q0rw95lMVMGYJeYU1PyX2QccC9iI","email":"y920531@gmail.com","emailVerified":false,"metadata":{"creationTime":"2025-12-02T03:29:27.916Z","lastSignInTime":"2025-12-02T03:29:27.916Z"},"customClaims":{},"providerData":[{"rawId":"y920531@gmail.com","providerId":"password","email":"y920531@gmail.com","federatedId":"y920531@gmail.com"}]}}
-[debug] [2025-12-02T03:29:27.929Z] <<< [apiv2][status] POST http://127.0.0.1:5001/functions/projects/software-engineering-edc96/trigger_multicast 200
-[debug] [2025-12-02T03:29:27.929Z] <<< [apiv2][body] POST http://127.0.0.1:5001/functions/projects/software-engineering-edc96/trigger_multicast {"status":"multicast_acknowledged"}
-[debug] [2025-12-02T03:29:27.931Z] >>> [apiv2][query] POST http://127.0.0.1:5001/functions/projects/software-engineering-edc96/trigger_multicast [none]
-[debug] [2025-12-02T03:29:27.931Z] >>> [apiv2][body] POST http://127.0.0.1:5001/functions/projects/software-engineering-edc96/trigger_multicast {"eventId":"52f98e63-230c-4b12-8ded-e86dde449cd9","eventType":"providers/firebase.auth/eventTypes/user.create","resource":{"name":"projects/software-engineering-edc96","service":"firebaseauth.googleapis.com"},"params":{},"timestamp":"2025-12-02T03:29:27.931Z","data":{"uid":"WXkhG3H8WurrkGkknAvr0E7oH6Uv","email":"m101450924@gmail.com","emailVerified":false,"metadata":{"creationTime":"2025-12-02T03:29:27.931Z","lastSignInTime":"2025-12-02T03:29:27.931Z"},"customClaims":{},"providerData":[{"rawId":"m101450924@gmail.com","providerId":"password","email":"m101450924@gmail.com","federatedId":"m101450924@gmail.com"}]}}
-[debug] [2025-12-02T03:29:27.935Z] <<< [apiv2][status] POST http://127.0.0.1:5001/functions/projects/software-engineering-edc96/trigger_multicast 200
-[debug] [2025-12-02T03:29:27.935Z] <<< [apiv2][body] POST http://127.0.0.1:5001/functions/projects/software-engineering-edc96/trigger_multicast {"status":"multicast_acknowledged"}
-[debug] [2025-12-02T03:29:27.937Z] Dec 02, 2025 11:29:27 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
-INFO: Detected non-HTTP/2 connection.
- {"metadata":{"emulator":{"name":"firestore"},"message":"Dec 02, 2025 11:29:27 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead\r\nINFO: Detected non-HTTP/2 connection.\r\n"}}
-[debug] [2025-12-02T03:29:28.040Z] Multiple projectIds are not recommended in single project mode. Requested project ID demo, but the emulator is configured for software-engineering-edc96. To opt-out of single project mode add/set the '"singleProjectMode": false' property in the firebase.json emulators config.
- {"metadata":{"emulator":{"name":"firestore"},"message":"Multiple projectIds are not recommended in single project mode. Requested project ID demo, but the emulator is configured for software-engineering-edc96. To opt-out of single project mode add/set the '\"singleProjectMode\": false' property in the firebase.json emulators config.\r\n"}}
-[debug] [2025-12-02T03:29:28.776Z] Multiple projectIds are not recommended in single project mode. Requested project ID demo, but the emulator is configured for software-engineering-edc96. To opt-out of single project mode add/set the '"singleProjectMode": false' property in the firebase.json emulators config.
- {"metadata":{"emulator":{"name":"firestore"},"message":"Multiple projectIds are not recommended in single project mode. Requested project ID demo, but the emulator is configured for software-engineering-edc96. To opt-out of single project mode add/set the '\"singleProjectMode\": false' property in the firebase.json emulators config.\r\n"}}
-[debug] [2025-12-02T03:29:28.819Z] Multiple projectIds are not recommended in single project mode. Requested project ID demo, but the emulator is configured for software-engineering-edc96. To opt-out of single project mode add/set the '"singleProjectMode": false' property in the firebase.json emulators config.
- {"metadata":{"emulator":{"name":"firestore"},"message":"Multiple projectIds are not recommended in single project mode. Requested project ID demo, but the emulator is configured for software-engineering-edc96. To opt-out of single project mode add/set the '\"singleProjectMode\": false' property in the firebase.json emulators config.\r\n"}}
-[debug] [2025-12-02T03:29:28.850Z] Multiple projectIds are not recommended in single project mode. Requested project ID demo, but the emulator is configured for software-engineering-edc96. To opt-out of single project mode add/set the '"singleProjectMode": false' property in the firebase.json emulators config.
- {"metadata":{"emulator":{"name":"firestore"},"message":"Multiple projectIds are not recommended in single project mode. Requested project ID demo, but the emulator is configured for software-engineering-edc96. To opt-out of single project mode add/set the '\"singleProjectMode\": false' property in the firebase.json emulators config.\r\n"}}
+[debug] [2025-12-06T11:44:15.712Z] ----------------------------------------------------------------------
+[debug] [2025-12-06T11:44:15.714Z] Command:       C:\Program Files\nodejs\node.exe C:\軟工\node_modules\firebase-tools\lib\bin\firebase.js emulators:start --only auth,firestore,functions,storage,ui --debug
+[debug] [2025-12-06T11:44:15.714Z] CLI Version:   14.26.0
+[debug] [2025-12-06T11:44:15.714Z] Platform:      win32
+[debug] [2025-12-06T11:44:15.714Z] Node Version:  v22.20.0
+[debug] [2025-12-06T11:44:15.714Z] Time:          Sat Dec 06 2025 19:44:15 GMT+0800 (台北標準時間)
+[debug] [2025-12-06T11:44:15.714Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-12-06T11:44:15.871Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-12-06T11:44:15.872Z] > authorizing via signed-in user (pinchunwang910930@gmail.com)
+[debug] [2025-12-06T11:44:15.922Z] openjdk version "21.0.9" 2025-10-21 LTS
+
+[debug] [2025-12-06T11:44:15.923Z] OpenJDK Runtime Environment Temurin-21.0.9+10 (build 21.0.9+10-LTS)
+OpenJDK 64-Bit Server VM Temurin-21.0.9+10 (build 21.0.9+10-LTS, mixed mode, sharing)
+
+[debug] [2025-12-06T11:44:15.964Z] Parsed Java major version: 21
+[info] i  emulators: Starting emulators: auth, functions, firestore, storage {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth, functions, firestore, storage"}}
+[warn] !  ui: Not starting the ui emulator, make sure you have run firebase init. {"metadata":{"emulator":{"name":"ui"},"message":"Not starting the \u001b[1mui\u001b[22m emulator, make sure you have run \u001b[1mfirebase init\u001b[22m."}}
+[warn] !  auth: Port 9099 is not open on 127.0.0.1, could not start Authentication Emulator. {"metadata":{"emulator":{"name":"auth"},"message":"Port 9099 is not open on 127.0.0.1, could not start Authentication Emulator."}}
+[warn] !  auth: To select a different host/port, specify that host/port in a firebase.json config file:
+      {
+        // ...
+        "emulators": {
+          "auth": {
+            "host": "HOST",
+            "port": "PORT"
+          }
+        }
+      } {"metadata":{"emulator":{"name":"auth"},"message":"To select a different host/port, specify that host/port in a firebase.json config file:\n      {\n        // ...\n        \"emulators\": {\n          \"auth\": {\n            \"host\": \"\u001b[33mHOST\u001b[39m\",\n            \"port\": \"\u001b[33mPORT\u001b[39m\"\n          }\n        }\n      }"}}
+[warn] !  hub: emulator hub unable to start on port 4400, starting on 4401 instead. {"metadata":{"emulator":{"name":"hub"},"message":"emulator hub unable to start on port 4400, starting on 4401 instead."}}
+[warn] !  logging: Logging Emulator unable to start on port 4500, starting on 4501 instead. {"metadata":{"emulator":{"name":"logging"},"message":"Logging Emulator unable to start on port 4500, starting on 4501 instead."}}
+[debug] [2025-12-06T11:44:15.975Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-12-06T11:44:15.977Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] i  emulators: Shutting down emulators. {"metadata":{"emulator":{"name":"hub"},"message":"Shutting down emulators."}}
+[debug] [2025-12-06T11:44:15.979Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[error] 
+[error] Error: Could not start Authentication Emulator, port taken.
