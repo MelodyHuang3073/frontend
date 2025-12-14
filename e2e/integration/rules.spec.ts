@@ -1,22 +1,63 @@
 import fs from 'fs';
 import path from 'path';
-import { initializeTestEnvironment, assertSucceeds } from '@firebase/rules-unit-testing';
+import { initializeTestEnvironment, assertSucceeds, assertFails, RulesTestEnvironment } from '@firebase/rules-unit-testing';
 
-async function run() {
-	try {
-		const rules = fs.readFileSync(path.join(process.cwd(), 'firestore.rules'), 'utf8');
-		const env = await initializeTestEnvironment({ projectId: 'demo', firestore: { rules } });
+const PROJECT_ID = 'demo-project';
+const FIRESTORE_EMULATOR_HOST = '127.0.0.1:8089';
 
-		const alice = env.authenticatedContext('alice-uid', { email: 'alice@example.com' });
-		// rules require `userId` to match auth.uid on create
-		await assertSucceeds(alice.firestore().collection('leaves').add({ userId: 'alice-uid', studentEmail: 'alice@example.com', status: 'PENDING' }));
-		await env.cleanup();
-		console.log('Rules smoke test passed');
-	} catch (e) {
-		console.warn('Rules tests skipped or failed (missing @firebase/rules-unit-testing?)', String(e));
-	}
-}
+describe('Security Rules', () => {
+  let testEnv: RulesTestEnvironment;
 
-run().catch(e => { console.error(e); process.exitCode = 1 });
+  beforeAll(async () => {
+    // Load rules from file
+    const rules = fs.readFileSync(path.resolve(__dirname, '../../firestore.rules'), 'utf8');
+    
+    testEnv = await initializeTestEnvironment({
+      projectId: PROJECT_ID,
+      firestore: {
+        rules,
+        host: '127.0.0.1',
+        port: 8089,
+      },
+    });
+  });
 
-export {};
+  afterAll(async () => {
+    await testEnv.cleanup();
+  });
+
+  beforeEach(async () => {
+    await testEnv.clearFirestore();
+  });
+
+  it('should allow authenticated user to create their own leave', async () => {
+    const alice = testEnv.authenticatedContext('alice-uid', { email: 'alice@example.com' });
+    
+    await assertSucceeds(alice.firestore().collection('leaves').add({
+      userId: 'alice-uid',
+      studentEmail: 'alice@example.com',
+      status: 'PENDING',
+      createdAt: new Date(),
+      reason: 'Sick leave'
+    }));
+  });
+
+  it('should deny unauthenticated user from creating leave', async () => {
+    const guest = testEnv.unauthenticatedContext();
+    
+    await assertFails(guest.firestore().collection('leaves').add({
+      userId: 'some-uid',
+      status: 'PENDING'
+    }));
+  });
+
+  it('should deny user from creating leave for others', async () => {
+    const alice = testEnv.authenticatedContext('alice-uid');
+    
+    await assertFails(alice.firestore().collection('leaves').add({
+      userId: 'bob-uid', // Mismatch
+      status: 'PENDING'
+    }));
+  });
+});
+

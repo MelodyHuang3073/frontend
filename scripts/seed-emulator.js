@@ -1,9 +1,15 @@
 #!/usr/bin/env node
 // seed-emulator.js - minimal seeding for emulator: create student and teacher users and simple course/enrollment
 const fetch = require('node-fetch');
-const authHost = process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099';
-const firestoreHost = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
+const authHost = process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9197';
+const firestoreHost = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8087';
 const projectId = process.env.GCLOUD_PROJECT || process.env.FIREBASE_PROJECT || 'demo';
+
+// Use Admin SDK for Firestore writes so seeding isn't blocked by security rules
+const admin = require('firebase-admin');
+if (!process.env.FIRESTORE_EMULATOR_HOST) process.env.FIRESTORE_EMULATOR_HOST = firestoreHost;
+admin.initializeApp({ projectId });
+const db = admin.firestore();
 
 const student = { email: 'y920531@gmail.com', password: 'Aa12345678', displayName: 'Student Test', role: 'student' };
 const teacher = { email: 'm101450924@gmail.com', password: 'Aa12345678', displayName: 'Teacher Test', role: 'teacher' };
@@ -21,54 +27,22 @@ async function createAuthUser(email, password) {
 }
 
 async function setUserDoc(uid, userObj) {
-  const url = `http://${firestoreHost}/v1/projects/${projectId}/databases/(default)/documents/users?documentId=${uid}`;
-  const fields = {};
-  for (const k of Object.keys(userObj)) {
-    const v = userObj[k];
-    if (typeof v === 'string') fields[k] = { stringValue: v };
-    else if (typeof v === 'number') fields[k] = { integerValue: String(v) };
-    else if (typeof v === 'boolean') fields[k] = { booleanValue: v };
-    else fields[k] = { stringValue: JSON.stringify(v) };
-  }
-  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields }) });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`Failed set user doc: ${res.status} ${t}`);
-  }
-  return res.json();
+  // Use Admin SDK to write users/{uid} so emulator rules don't block us
+  await db.collection('users').doc(uid).set(userObj, { merge: true });
+  return { success: true };
 }
 
 async function createCourse(code = 'TEST100', name = '自動化測試課程', teacherUid) {
-  const url = `http://${firestoreHost}/v1/projects/${projectId}/databases/(default)/documents/course`;
-  const doc = {
-    fields: {
-      code: { stringValue: code },
-      name: { stringValue: name },
-      teacherUid: { stringValue: teacherUid || '' }
-    }
-  };
-  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(doc) });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`Failed create course: ${res.status} ${t}`);
-  }
-  return res.json();
+  const ref = db.collection('course').doc();
+  const data = { code, name, teacherUid: teacherUid || '' };
+  await ref.set(data);
+  return { id: ref.id, fields: { code: { stringValue: code } } };
 }
 
 async function createEnrollment(studentUid, courseCode) {
-  const url = `http://${firestoreHost}/v1/projects/${projectId}/databases/(default)/documents/enrollments`;
-  const doc = {
-    fields: {
-      studentUid: { stringValue: studentUid },
-      courseCode: { stringValue: courseCode }
-    }
-  };
-  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(doc) });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`Failed create enrollment: ${res.status} ${t}`);
-  }
-  return res.json();
+  const ref = db.collection('enrollments').doc();
+  await ref.set({ studentUid, courseCode });
+  return { id: ref.id };
 }
 
 (async () => {

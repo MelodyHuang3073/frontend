@@ -17,7 +17,6 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.23",
-    "@types/jest": "^27.5.2",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/mongoose": "^5.11.96",
     "@types/multer": "^2.0.0",
@@ -52,6 +51,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "test:integration": "jest -c jest.integration.config.js",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
@@ -89,6 +89,9 @@
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.0",
     "@playwright/test": "1.57.0",
-    "playwright": "1.57.0"
+    "@types/jest": "^30.0.0",
+    "jest": "^30.2.0",
+    "playwright": "1.57.0",
+    "ts-jest": "^29.4.6"
   }
 }

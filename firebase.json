@@ -13,8 +13,8 @@
   }
   ,
   "emulators": {
-    "auth": { "host": "127.0.0.1", "port": 9099 },
-    "firestore": { "host": "127.0.0.1", "port": 8087 },
+    "auth": { "host": "127.0.0.1", "port": 9197 },
+    "firestore": { "host": "127.0.0.1", "port": 8089 },
     "functions": { "host": "127.0.0.1", "port": 5002 },
     "ui": { "enabled": true, "host": "127.0.0.1", "port": 4100 },
     "storage": { "host": "127.0.0.1", "port": 9198 }

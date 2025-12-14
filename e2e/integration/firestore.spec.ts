@@ -1,41 +1,49 @@
 import admin from 'firebase-admin';
 
-const PROJECT_ID = process.env.FIREBASE_PROJECT || process.env.GCLOUD_PROJECT || 'demo';
+const PROJECT_ID = 'demo-project';
+const FIRESTORE_EMULATOR_HOST = '127.0.0.1:8089'; // Port 8088 as per your config
 
-async function run() {
-	admin.initializeApp({ projectId: PROJECT_ID });
-	const db = admin.firestore();
-
-	const studentEmail = process.env.E2E_STUDENT_EMAIL || 'y920531@gmail.com';
-	const teacherEmail = process.env.E2E_TEACHER_EMAIL || 'm101450924@gmail.com';
-
-	// Resolve users if present
-	let studentUid = null;
-	let teacherUid = null;
-	try { studentUid = (await admin.auth().getUserByEmail(studentEmail)).uid; } catch (e) { console.warn('No student auth:', String(e)); }
-	try { teacherUid = (await admin.auth().getUserByEmail(teacherEmail)).uid; } catch (e) { console.warn('No teacher auth:', String(e)); }
-
-	const leaveRef = await db.collection('leaves').add({
-		userId: studentUid,
-		studentEmail,
-		userName: 'Test Student',
-		courseId: 'TEST100',
-		assignedTeacherUid: teacherUid,
-		startAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 3600 * 1000)),
-		endAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 5 * 3600 * 1000)),
-		reason: 'Integration test leave',
-		status: 'PENDING',
-		createdAt: admin.firestore.FieldValue.serverTimestamp()
-	});
-
-	console.log('Created leave id:', leaveRef.id);
-
-	// Approve
-	await leaveRef.update({ status: 'approved', approvedBy: teacherEmail, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
-	const snap = await leaveRef.get();
-	console.log('Leave after approve:', snap.data());
+if (admin.apps.length === 0) {
+  process.env.FIRESTORE_EMULATOR_HOST = FIRESTORE_EMULATOR_HOST;
+  admin.initializeApp({ projectId: PROJECT_ID });
 }
 
-run().catch(e => { console.error(e); process.exitCode = 1 });
+describe('Firestore Integration', () => {
+  const db = admin.firestore();
+  let leaveId: string;
 
-export {};
+  it('should create a leave application', async () => {
+    const leaveData = {
+      userId: 'test-student-uid',
+      studentEmail: 'student@example.com',
+      userName: 'Test Student',
+      courseId: 'TEST100',
+      startAt: admin.firestore.Timestamp.now(),
+      endAt: admin.firestore.Timestamp.fromMillis(Date.now() + 3600000),
+      reason: 'Integration test',
+      status: 'PENDING',
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    const ref = await db.collection('leaves').add(leaveData);
+    leaveId = ref.id;
+    
+    const snap = await ref.get();
+    expect(snap.exists).toBe(true);
+    expect(snap.data()?.status).toBe('PENDING');
+  });
+
+  it('should update leave status to APPROVED', async () => {
+    const ref = db.collection('leaves').doc(leaveId);
+    await ref.update({ 
+      status: 'APPROVED',
+      approvedBy: 'teacher@example.com',
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    const snap = await ref.get();
+    expect(snap.data()?.status).toBe('APPROVED');
+    expect(snap.data()?.approvedBy).toBe('teacher@example.com');
+  });
+});
+
