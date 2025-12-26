@@ -1,70 +1,88 @@
-# Getting Started with Create React App
+# 使用 Create React App 快速開始
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+本專案以 [Create React App](https://github.com/facebook/create-react-app) 建立。
 
-## Available Scripts
+## 可用指令
 
-In the project directory, you can run:
+在專案目錄中可執行下列指令：
 
 ### `npm start`
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+啟動開發模式。\
+開啟 [http://localhost:3000](http://localhost:3000) 在瀏覽器中查看。
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+儲存檔案後頁面會自動重新載入，\
+並在主控台顯示任何 ESLint 錯誤。
 
 ### `npm test`
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+以互動式監看模式啟動測試工具。\
+更多資訊請參考 [Running Tests](https://facebook.github.io/create-react-app/docs/running-tests)。
 
 ### `npm run build`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+以生產模式建置，輸出到 `build` 資料夾。\
+React 會在生產模式下打包並最佳化效能。
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+建置結果已最小化，檔名包含雜湊值。\
+應用程式已可部署！
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+部署相關說明請見 [Deployment](https://facebook.github.io/create-react-app/docs/deployment)。
 
-### `npm run eject`
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+## 系統簡介與內容
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+本前端專案為「請假管理系統」，提供使用者進行登入/註冊、申請請假、審核請假、瀏覽請假清單與個人資料維護，並可查看學生課表以避免衝堂。系統採用 React + TypeScript，並整合 Firebase 服務（驗證、儲存等）以支援雲端資料與檔案上傳。
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+## 主要功能
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+- 帳號驗證：支援註冊、登入、登出與基本身分驗證流程（範例頁面於 `src/pages/Login.tsx`、`src/pages/Register.tsx`）。
+- 儀表板總覽：在 `src/pages/Dashboard.tsx` 提供系統入口與重要資訊總覽。
+- 請假申請：`src/pages/LeaveApplication.tsx` 可建立請假申請，填寫事由與期間；上傳附件時請參考下方 CORS 設定。
+- 請假審核：管理者可於 `src/pages/LeaveApproval.tsx` 審核（核准/駁回）待處理申請。
+- 請假清單：`src/pages/LeaveList.tsx` 提供依狀態/日期等條件檢視與過濾申請記錄。
+- 學生課表：`src/pages/StudentSchedule.tsx` 顯示課表資訊，協助使用者避開課程時間。
+- 個人檔案：`src/pages/Profile.tsx` 檢視或更新個人基本資料。
 
-## Learn More
+## 頁面導覽
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+- 登入：`src/pages/Login.tsx`
+- 註冊：`src/pages/Register.tsx`
+- 儀表板：`src/pages/Dashboard.tsx`
+- 請假申請：`src/pages/LeaveApplication.tsx`
+- 請假審核（管理者）：`src/pages/LeaveApproval.tsx`
+- 請假清單：`src/pages/LeaveList.tsx`
+- 學生課表：`src/pages/StudentSchedule.tsx`
+- 個人檔案：`src/pages/Profile.tsx`
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## 技術架構（前端）
 
-## Setting CORS for Firebase Storage
+- React + TypeScript：以 Create React App 建置（見 `src/` 與 `tsconfig.json`）。
+- Firebase（前端設定）：`src/firebase/` 放置設定檔（如 `config.ts`、`index.ts`）。
+- 服務層：`src/services/` 提供資料與業務邏輯封裝（如 `authService.ts`、`leaveService.ts`）。
+- 型別定義：`src/types/`
+- 版面與模組化元件：`src/components/`（含 `Auth/`、`Layout/`）
 
-If you upload files from a local development server (http://localhost:3000) to Firebase Storage, you must set CORS on the actual GCS bucket used by your Firebase project. The bucket name is defined in `src/firebase/config.ts` under `storageBucket`.
+## 設定 Firebase Storage 的 CORS
 
-Correct gsutil example (PowerShell):
+若你在本機開發伺服器（http://localhost:3000）上傳檔案至 Firebase Storage，必須在對應的 GCS Bucket（Firebase 專案實際使用的 Bucket）設定 CORS。Bucket 名稱在 `src/firebase/config.ts` 的 `storageBucket` 欄位中定義。
+
+正確的 gsutil 設定範例（PowerShell）：
 
 ```powershell
 gsutil cors set .\cors.json gs://software-engineering-edc96.appspot.com
 ```
 
-Alternatively, this repository includes a convenience script that will read the bucket name from `src/firebase/config.ts` or from the environment variable `BUCKET_NAME`:
+此外，本儲存庫提供一個便利腳本，會從 `src/firebase/config.ts` 或環境變數 `BUCKET_NAME` 讀取 Bucket 名稱並設定 CORS：
 
 ```powershell
-# install dependency and run (ensure GOOGLE_APPLICATION_CREDENTIALS is set to a service account key with Storage Admin)
+# 安裝相依套件並執行（請先將 GOOGLE_APPLICATION_CREDENTIALS 設為具備 Storage Admin 權限的服務帳戶金鑰）
 npm install @google-cloud/storage
 node ./scripts/set-cors.js
 
-# or set a specific bucket explicitly
+# 或明確指定要設定的 Bucket
 $env:BUCKET_NAME = 'software-engineering-edc96.appspot.com'
 node ./scripts/set-cors.js
 ```
 
-If you previously set CORS on a bucket named `*.firebasestorage.app`, that is incorrect for Firebase Storage and will not affect uploads. Use the correct `*.appspot.com` bucket name.
+提醒：若你曾在名稱為 `*.firebasestorage.app` 的 Bucket 設定 CORS，這對 Firebase Storage 是不正確的，且不會影響到上傳。請改用正確的 `*.appspot.com` Bucket 名稱。
